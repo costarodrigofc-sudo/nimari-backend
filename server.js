@@ -204,6 +204,17 @@ app.post('/api/admin/criar', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+app.post('/api/admin/reset-senha', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    await pool.query('UPDATE admin_users SET password_hash=$1 WHERE username=$2', [hash, username]);
+    res.json({ ok: true, mensagem: 'Senha atualizada com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body;
   try {
