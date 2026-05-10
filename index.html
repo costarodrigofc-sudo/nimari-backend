@@ -25,7 +25,7 @@
   <meta property="og:description" content="Realce sua beleza com elegância e conforto. Conheça a coleção NIMARI.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://nimari.netlify.app/">
-  <meta property="og:image" content="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/WhatsApp%20Image%202026-05-01%20at%2017.53.18.jpeg">
+  <meta property="og:image" content="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com/">
@@ -1546,7 +1546,7 @@
     </div>
   </div>
   <div class="hero-image">
-    <img src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/WhatsApp%20Image%202026-05-01%20at%2017.53.18.jpeg" alt="Cosméticos NIMARI" loading="eager">
+    <img src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg" alt="Cosméticos NIMARI" loading="eager">
     <!-- <div class="hero-badge reveal delay-4 visible">
       <div class="hero-badge-num">50+</div>
       <div class="hero-badge-text">Mulheres transformadas</div>
@@ -1627,7 +1627,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.35-4.35"></path></svg>
         <input type="text" id="catalogSearch" placeholder="Buscar produto…" oninput="filterProducts()">
       </div>
-      <span class="catalog-result-count" id="resultCount">9 produtos</span>
+      <span class="catalog-result-count" id="resultCount">produtos</span>
     </div>
 
     <!-- Layout -->
@@ -1688,6 +1688,19 @@
             </div>
             <div class="sidebar-sub-item" data-filter="confeccao" data-sub="outros-conf" onclick="setFilter('confeccao','outros-conf','Confecção › Outros')">
               Outros <span class="sub-count" id="cnt-outros-conf"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- KIT -->
+        <div class="sidebar-section">
+          <button class="sidebar-group-btn open" id="grp-kit" onclick="toggleGroup('kit')">
+            <span> Kit</span>
+            <span class="chevron">▲</span>
+          </button>
+          <div class="sidebar-sub open" id="sub-kit">
+            <div class="sidebar-sub-item" data-filter="kit" data-sub="kit-presente" onclick="setFilter('kit','kit-presente','Kit › Kit Presente')">
+              Kit Presente <span class="sub-count" id="cnt-kit-presente"></span>
             </div>
           </div>
         </div>
@@ -2052,6 +2065,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
           <select class="admin-inp" id="editCat" onchange="syncEditSubOptions()">
             <option value="cosmeticos">Cosméticos</option>
             <option value="confeccao">Confecção</option>
+            <option value="kit">Kit</option>
           </select>
         </div>
 
@@ -2127,6 +2141,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
         <select class="admin-inp" id="addCat">
           <option value="cosmeticos">Cosméticos</option>
           <option value="confeccao">Confecção</option>
+          <option value="kit">Kit</option>
         </select>
       </div>
 
@@ -2144,6 +2159,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
           <option value="sutia">Sutiã</option>
           <option value="calcinha">Calcinha</option>
           <option value="outros-conf">Outros Confecção</option>
+          <option value="kit-presente">Kit Presente</option>
         </select>
       </div>
 
@@ -2376,12 +2392,12 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
   }
 
   function applyFilter() {
-    _visibleCount = 10;
+    _visibleCount = 09;
     _renderVisible();
   }
 
   function loadMore() {
-    _visibleCount += 10;
+    _visibleCount += 09;
     _renderVisible();
   }
 
@@ -2464,12 +2480,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
   ════════════════════════════════════════════ */
   const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:3001/api'
-    : window.location.origin + '/api';
-  const WPP_DEFAULT = '5598985631126';
-  let adminToken = sessionStorage.getItem('nimari_token') || null;
-  window._nimariAdminToken = adminToken;
-  let globalWppNumber = WPP_DEFAULT;
-  window._nimariApiUrl = API_URL;
+    : 'https://nimari-backend-production.up.railway.app/api';
 
   // Carrega número do WhatsApp da API
   fetch(API_URL + '/config/wpp_number')
@@ -2488,6 +2499,9 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
     });
   }
 
+  let adminToken = null;
+  let globalWppNumber = '';
+  const WPP_DEFAULT = '';
   let adminAuthenticated = false;
   let editingCard = null;
   let editBadgeVal = 'none';
@@ -2873,6 +2887,9 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
       { value: 'calcinha',    label: 'Calcinha' },
       { value: 'outros-conf', label: 'Outros Confecção' },
     ],
+    kit: [
+      { value: 'kit-presente', label: 'Kit Presente' },
+    ],
   };
   function syncEditSubOptions() {
     const catEl = document.getElementById('editCat');
@@ -3056,7 +3073,7 @@ card.dataset.uid  = uid;
     card.dataset.isnew = '1';
     card.dataset.wpp   = ((p.wpp || WPP_DEFAULT).replace(/\D/g,'')) || WPP_DEFAULT;
 
-    const imgSrc = p.img || 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/WhatsApp%20Image%202026-05-01%20at%2017.53.18.jpeg';
+    const imgSrc = p.img || 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg';
     const catLabel = subLabels[p.sub] || p.cat || '';
     const wppNum = (p.wpp||WPP_DEFAULT).replace(/\D/g,'');
     const priceOldHtml = p.priceOld ? `<span class="product-price-old">R$ ${p.priceOld}</span>` : '';
@@ -3887,8 +3904,8 @@ card.dataset.uid  = uid;
     formData.append('imagem', file);
 
     try {
-      const token = window._nimariAdminToken;
-      const apiUrl = window._nimariApiUrl;
+      const token = adminToken || window._nimariAdminToken;
+      const apiUrl = API_URL || window._nimariApiUrl;
       const res = await fetch(apiUrl + '/upload', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token },

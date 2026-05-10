@@ -245,7 +245,7 @@ const PORT = process.env.PORT || 3001;
 
 app.get('/', (req, res) => {
   // Removido o '../' pois o arquivo está na mesma pasta que o server.js
-  res.sendFile(path.join(__dirname, 'index.htm')); 
+  res.sendFile(path.join(__dirname, 'index.html')); 
 });
 
 app.listen(PORT, () => {
