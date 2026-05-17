@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produto — NIMARI</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- SEO dinâmico — preenchido via JS -->
+<meta name="description" id="metaDesc" content="NIMARI – Cosméticos e Moda Íntima">
+<meta property="og:title"       id="ogTitle"  content="NIMARI">
+<meta property="og:description" id="ogDesc"   content="NIMARI – Cosméticos e Moda Íntima">
+<meta property="og:image"       id="ogImage"  content="">
+<meta property="og:type" content="product">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #FFFAF8;
+    --rose:      #EAD7D1;
+    --rose-dark: #D4B8B0;
+    --rose-deep: #C4A090;
+    --gold:      #C9A96E;
+    --ink:       #2D2D2D;
+    --ink-lt:    #6B6B6B;
+    --white:     #FFFFFF;
+    --ff-serif:  'Playfair Display', Georgia, serif;
+    --ff-elegant:'Cormorant Garamond', Georgia, serif;
+    --ff-sans:   'Jost', sans-serif;
+    --radius:    14px;
+  }
+
+  body {
+    font-family: var(--ff-sans);
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 40px;
+    height: 64px;
+    background: rgba(255,250,248,.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--rose);
+  }
+  .header-logo {
+    font-family: var(--ff-serif);
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: 6px;
+    text-decoration: none;
+    color: var(--ink);
+    text-transform: uppercase;
+  }
+  .header-back {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--ink-lt);
+    text-decoration: none;
+    transition: color .2s;
+  }
+  .header-back:hover { color: var(--rose-deep); }
+  .header-back svg { width: 16px; height: 16px; }
+
+  /* ── LOADING ── */
+  .loading {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 60vh;
+    font-family: var(--ff-elegant);
+    font-size: 20px;
+    color: var(--ink-lt);
+    letter-spacing: 2px;
+  }
+  .loading::after {
+    content: '';
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid var(--rose);
+    border-top-color: var(--rose-deep);
+    border-radius: 50%;
+    margin-left: 14px;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── PRODUTO LAYOUT ── */
+  .produto-wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 60px 24px 100px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 72px;
+    align-items: start;
+  }
+
+  /* ── IMAGEM ── */
+  .img-block { position: sticky; top: 84px; }
+
+  .img-main-wrap {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--rose);
+    position: relative;
+  }
+  .img-main {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform .5s cubic-bezier(.22,1,.36,1);
+  }
+  .img-main-wrap:hover .img-main { transform: scale(1.04); }
+
+  .badge {
+    position: absolute; top: 16px; left: 16px;
+    font-family: var(--ff-sans);
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 1px; text-transform: uppercase;
+    padding: 4px 12px; border-radius: 20px;
+    background: var(--gold); color: var(--white);
+  }
+  .badge.novo   { background: var(--rose-deep); }
+  .badge.oferta { background: #b07070; }
+
+  /* ── INFO ── */
+  .info-block { padding-top: 8px; }
+
+  .cat-tag {
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--rose-deep);
+    margin-bottom: 14px;
+  }
+
+  .prod-name {
+    font-family: var(--ff-serif);
+    font-size: 36px; font-weight: 400;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 20px;
+  }
+
+  .price-row {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 24px;
+  }
+  .price-main {
+    font-family: var(--ff-elegant);
+    font-size: 34px; font-weight: 500;
+    color: var(--ink);
+  }
+  .price-old {
+    font-size: 18px;
+    color: var(--ink-lt);
+    text-decoration: line-through;
+  }
+  .price-installment {
+    font-size: 13px; color: var(--ink-lt);
+    margin-top: -16px; margin-bottom: 24px;
+  }
+
+  .divider { height: 1px; background: var(--rose); margin: 24px 0; }
+
+  .desc-title {
+    font-size: 12px; font-weight: 500;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--ink-lt); margin-bottom: 10px;
+  }
+  .desc-text {
+    font-family: var(--ff-elegant);
+    font-size: 18px; line-height: 1.75;
+    color: var(--ink-lt);
+    margin-bottom: 32px;
+  }
+
+  /* Qty + botões */
+  .qty-row {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 16px;
+  }
+  .qty-ctrl {
+    display: flex; align-items: center;
+    border: 1px solid var(--rose-dark);
+    border-radius: 8px; overflow: hidden;
+  }
+  .qty-btn {
+    width: 38px; height: 42px;
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; color: var(--ink);
+    transition: background .15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .qty-btn:hover { background: var(--rose); }
+  .qty-num {
+    width: 44px; height: 42px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 500;
+    border-left: 1px solid var(--rose); border-right: 1px solid var(--rose);
+    user-select: none;
+  }
+
+  .btn-cart {
+    flex: 1;
+    height: 50px;
+    background: var(--ink); color: var(--white);
+    border: none; border-radius: 10px;
+    font-family: var(--ff-sans);
+    font-size: 14px; font-weight: 500;
+    letter-spacing: .5px;
+    cursor: pointer;
+    transition: background .2s, transform .15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-cart:hover  { background: #444; }
+  .btn-cart:active { transform: scale(.98); }
+
+  .btn-wpp {
+    width: 100%;
+    height: 48px;
+    background: none;
+    border: 1px solid #25d366; color: #25d366;
+    border-radius: 10px;
+    font-family: var(--ff-sans);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: background .2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    text-decoration: none;
+    margin-top: 10px;
+  }
+  .btn-wpp:hover { background: #f0fff4; }
+
+  /* desejos */
+  .btn-wish {
+    width: 50px; height: 50px;
+    border: 1px solid var(--rose-dark);
+    border-radius: 10px;
+    background: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    transition: background .2s, border-color .2s;
+    flex-shrink: 0;
+  }
+  .btn-wish:hover, .btn-wish.active { background: var(--rose); border-color: var(--rose-deep); }
+
+  /* info badges */
+  .info-badges {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-top: 28px;
+  }
+  .info-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--ink-lt);
+    background: var(--rose);
+    padding: 6px 14px; border-radius: 20px;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--ink); color: var(--white);
+    padding: 12px 24px; border-radius: 30px;
+    font-size: 14px; font-weight: 500;
+    opacity: 0; pointer-events: none;
+    transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .3s;
+    z-index: 999; white-space: nowrap;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  /* ── PRODUTOS RELACIONADOS ── */
+  .related { max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+  .related-title {
+    font-family: var(--ff-serif);
+    font-size: 26px; font-weight: 400;
+    margin-bottom: 28px;
+    padding-top: 40px;
+    border-top: 1px solid var(--rose);
+  }
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+  }
+  .related-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--rose);
+    cursor: pointer;
+    text-decoration: none;
+    transition: box-shadow .25s, transform .25s;
+    display: block;
+  }
+  .related-card:hover {
+    box-shadow: 0 8px 30px rgba(100,70,50,.1);
+    transform: translateY(-3px);
+  }
+  .related-img {
+    width: 100%; aspect-ratio: 1;
+    object-fit: cover;
+    background: var(--rose);
+  }
+  .related-info { padding: 14px 16px; }
+  .related-name {
+    font-size: 14px; font-weight: 500;
+    margin-bottom: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .related-price { font-size: 14px; color: var(--ink-lt); }
+
+  /* ── ERRO ── */
+  .error-wrap {
+    text-align: center; padding: 100px 24px;
+  }
+  .error-wrap h2 {
+    font-family: var(--ff-serif); font-size: 28px;
+    margin-bottom: 12px;
+  }
+  .error-wrap p { color: var(--ink-lt); margin-bottom: 28px; }
+  .btn-home {
+    display: inline-block;
+    padding: 12px 28px;
+    background: var(--ink); color: var(--white);
+    border-radius: 10px; text-decoration: none;
+    font-size: 14px; font-weight: 500;
+  }
+
+  /* ── RESPONSIVO ── */
+  @media (max-width: 768px) {
+    .header { padding: 0 20px; }
+    .produto-wrap {
+      grid-template-columns: 1fr;
+      gap: 32px; padding: 32px 16px 80px;
+    }
+    .img-block { position: static; }
+    .prod-name { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <a class="header-back" href="/">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Voltar
+  </a>
+  <a class="header-logo" href="/">NIMARI</a>
+  <div style="width:60px"></div><!-- espacador -->
+</header>
+
+<!-- CONTEÚDO DINÂMICO -->
+<div id="pageContent">
+  <div class="loading">Carregando produto</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Utilitários ──────────────────────────────────────────
+  const IMG_DEFAULT = 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg';
+
+  function sanitize(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  function showToast(msg, dur = 2800) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), dur);
+  }
+
+  function formatBRL(val) {
+    return Number(val).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  }
+
+  // ── Carrinho (sincronizado com index.html via localStorage) ──
+  function getCart() {
+    try { return JSON.parse(localStorage.getItem('nimari_cart') || '[]'); } catch { return []; }
+  }
+  function saveCart(cart) {
+    localStorage.setItem('nimari_cart', JSON.stringify(cart));
+  }
+  function addToCartLocal(produto, qty) {
+    const cart = getCart();
+    const existing = cart.find(i => i.uid === produto.uid);
+    if (existing) {
+      existing.qty += qty;
+    } else {
+      cart.push({
+        uid:      produto.uid,
+        name:     produto.name,
+        desc:     produto.descricao || '',
+        price:    'R$ ' + formatBRL(produto.price),
+        priceRaw: Number(produto.price),
+        img:      produto.img || IMG_DEFAULT,
+        qty,
+      });
+    }
+    saveCart(cart);
+    showToast(`✓ ${produto.name} adicionado ao carrinho`);
+  }
+
+  // Lista de desejos
+  function getWishlist() {
+    try { return JSON.parse(localStorage.getItem('nimari_wishlist') || '[]'); } catch { return []; }
+  }
+  function toggleWishlist(uid, btn) {
+    let w = getWishlist();
+    if (w.includes(uid)) {
+      w = w.filter(i => i !== uid);
+      btn.classList.remove('active');
+      btn.title = 'Adicionar à lista de desejos';
+      showToast('Removido dos desejos');
+    } else {
+      w.push(uid);
+      btn.classList.add('active');
+      btn.title = 'Remover dos desejos';
+      showToast('♡ Adicionado aos desejos');
+    }
+    localStorage.setItem('nimari_wishlist', JSON.stringify(w));
+  }
+
+  // Qty control
+  let qty = 1;
+  function changeQty(delta) {
+    qty = Math.max(1, qty + delta);
+    document.getElementById('qtyNum').textContent = qty;
+  }
+
+  // ── Pegar UID da URL (/produto/UID) ──────────────────────
+  function getUidFromUrl() {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    return parts[parts.length - 1] || null;
+  }
+
+  // ── Labels de categoria ───────────────────────────────────
+  const subLabels = {
+    pele:'Cuidados com a Pele', cabelo:'Cabelo', maquiagem:'Maquiagem',
+    perfume:'Perfumaria', corpo:'Corpo', conjunto:'Conjunto',
+    calcinha:'Calcinha', soutien:'Soutien', camisola:'Camisola',
+    robe:'Robe', pijama:'Pijama', kit:'Kit Especial',
+  };
+
+  // ── Renderiza página ──────────────────────────────────────
+  function renderPage(p, related) {
+    const catLabel   = subLabels[p.sub] || p.cat || '';
+    const imgSrc     = p.img || IMG_DEFAULT;
+    const wppNum     = (p.wpp || '5598985631126').replace(/\D/g,'');
+    const priceFormatted = formatBRL(p.price);
+    const wishlist   = getWishlist();
+    const isWished   = wishlist.includes(p.uid);
+
+    let badgeHtml = '';
+    if (p.badge === 'vendido') badgeHtml = '<span class="badge">Mais Vendido</span>';
+    if (p.badge === 'novo')    badgeHtml = '<span class="badge novo">Novo</span>';
+    if (p.badge === 'oferta')  badgeHtml = '<span class="badge oferta">Oferta</span>';
+
+    const priceOldHtml = p.price_old
+      ? `<span class="price-old">R$ ${formatBRL(p.price_old)}</span>` : '';
+
+    // Parcelas (3x sem juros se > R$30)
+    const installment = p.price > 30
+      ? `<p class="price-installment">ou 3× de R$ ${formatBRL(p.price / 3)} sem juros</p>` : '';
+
+    // SEO dinâmico
+    document.title = `${p.name} — NIMARI`;
+    document.getElementById('metaDesc').content = p.descricao || `${p.name} – NIMARI`;
+    document.getElementById('ogTitle').content  = `${p.name} — NIMARI`;
+    document.getElementById('ogDesc').content   = p.descricao || '';
+    document.getElementById('ogImage').content  = imgSrc;
+
+    // Relacionados
+    const relatedHtml = related.length ? `
+      <section class="related">
+        <h2 class="related-title">Você também pode gostar</h2>
+        <div class="related-grid">
+          ${related.map(r => `
+            <a class="related-card" href="/produto/${r.uid}">
+              <img class="related-img" src="${r.img || IMG_DEFAULT}"
+                   alt="${sanitize(r.name)}"
+                   onerror="this.src='${IMG_DEFAULT}'">
+              <div class="related-info">
+                <div class="related-name">${sanitize(r.name)}</div>
+                <div class="related-price">R$ ${formatBRL(r.price)}</div>
+              </div>
+            </a>`).join('')}
+        </div>
+      </section>` : '';
+
+    const wppMsg = encodeURIComponent(
+      `Olá! Tenho interesse no produto: *${p.name}*\nR$ ${priceFormatted}\nhttps://nimari.com.br/produto/${p.uid}`
+    );
+
+    document.getElementById('pageContent').innerHTML = `
+      <main class="produto-wrap">
+
+        <!-- IMAGEM -->
+        <div class="img-block">
+          <div class="img-main-wrap">
+            ${badgeHtml}
+            <img class="img-main" id="imgMain"
+                 src="${imgSrc}"
+                 alt="${sanitize(p.name)}"
+                 onerror="this.src='${IMG_DEFAULT}'">
+          </div>
+        </div>
+
+        <!-- INFO -->
+        <div class="info-block">
+          <p class="cat-tag">${sanitize(catLabel)}</p>
+          <h1 class="prod-name">${sanitize(p.name)}</h1>
+
+          <div class="price-row">
+            <span class="price-main">R$ ${priceFormatted}</span>
+            ${priceOldHtml}
+          </div>
+          ${installment}
+
+          <div class="divider"></div>
+
+          ${p.descricao ? `
+            <p class="desc-title">Descrição</p>
+            <p class="desc-text">${sanitize(p.descricao)}</p>
+          ` : ''}
+
+          <!-- Qty + Carrinho -->
+          <div class="qty-row">
+            <div class="qty-ctrl">
+              <button class="qty-btn" onclick="changeQty(-1)" aria-label="Diminuir">−</button>
+              <div class="qty-num" id="qtyNum">1</div>
+              <button class="qty-btn" onclick="changeQty(1)"  aria-label="Aumentar">+</button>
+            </div>
+            <button class="btn-cart" onclick="addToCartLocal(${JSON.stringify(p).replace(/</g,'\\u003c')}, qty)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                <path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.98-1.61L23 6H6"/>
+              </svg>
+              Adicionar ao carrinho
+            </button>
+            <button class="btn-wish ${isWished ? 'active' : ''}"
+                    id="wishBtn"
+                    onclick="toggleWishlist('${p.uid}', this)"
+                    title="${isWished ? 'Remover dos desejos' : 'Adicionar à lista de desejos'}">
+              ${isWished ? '♥' : '♡'}
+            </button>
+          </div>
+
+          <!-- WhatsApp direto -->
+          <a class="btn-wpp"
+             href="https://wa.me/${wppNum}?text=${wppMsg}"
+             target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#25d366">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+            </svg>
+            Comprar pelo WhatsApp
+          </a>
+
+          <!-- Selos de confiança -->
+          <div class="info-badges">
+            <div class="info-badge">🔒 Pagamento seguro</div>
+            <div class="info-badge">🚚 Entrega para todo o Brasil</div>
+            <div class="info-badge">↩️ Troca garantida</div>
+          </div>
+        </div>
+
+      </main>
+
+      ${relatedHtml}
+    `;
+  }
+
+  function renderError() {
+    document.getElementById('pageContent').innerHTML = `
+      <div class="error-wrap">
+        <h2>Produto não encontrado</h2>
+        <p>Este produto pode ter sido removido ou o link está incorreto.</p>
+        <a class="btn-home" href="/">Ver todos os produtos</a>
+      </div>`;
+  }
+
+  // ── Bootstrap ─────────────────────────────────────────────
+  (async function init() {
+    const uid = getUidFromUrl();
+    if (!uid) { renderError(); return; }
+
+    try {
+      // Busca todos os produtos (já existe no backend)
+      const res  = await fetch('/api/produtos');
+      const all  = await res.json();
+
+      const produto = all.find(p => p.uid === uid);
+      if (!produto) { renderError(); return; }
+
+      // Relacionados: mesma categoria, exceto ele mesmo, máx 4
+      const related = all
+        .filter(p => p.uid !== uid && p.cat === produto.cat)
+        .slice(0, 4);
+
+      renderPage(produto, related);
+    } catch (err) {
+      console.error(err);
+      renderError();
+    }
+  })();
+</script>
+</body>
+</html>
