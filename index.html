@@ -2479,8 +2479,8 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
      ADMIN PANEL
   ════════════════════════════════════════════ */
   const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:3001/api'
-    : 'https://nimari-backend-production.up.railway.app/api';
+  ? 'http://localhost:3001/api'
+  : 'https://nimari-backend.onrender.com/api';
 
   // Carrega número do WhatsApp da API
   fetch(API_URL + '/config/wpp_number')
