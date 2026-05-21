@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NIMARI – Cosméticos &amp; Moda Íntima</title>
+<link rel="icon" type="image/png" sizes="512x512" href="favicon.png">
+<link rel="icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="favicon.png">
 
   <!-- SEO -->
   <meta name="description" content="NIMARI – Cosméticos e Moda Íntima. Elegância, conforto e autoestima em cada detalhe. Mais de 50 mulheres transformadas.">
@@ -24,7 +26,7 @@
   <meta property="og:title" content="NIMARI – Cosméticos &amp; Moda Íntima">
   <meta property="og:description" content="Realce sua beleza com elegância e conforto. Conheça a coleção NIMARI.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://nimari.netlify.app/">
+  <meta property="og:url" content="https://www.nimari.com.br/">
   <meta property="og:image" content="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg">
 
   <!-- Fonts -->
@@ -307,54 +309,45 @@
       color: var(--ink-lt);
       max-width: 520px;
     }
-
-    /* ── BENEFITS ── */
-    .benefits { background: var(--bg); }
-    .benefits-header { text-align: center; margin-bottom: 4rem; }
-    .benefits-header .section-label { justify-content: center; }
-    .benefits-header .section-label::before { display: none; }
-    .benefits-header .section-subtitle { margin: 0 auto; }
-
-    .benefits-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1.5rem;
-    }
-
-    .benefit-card {
-      background: rgba(255,255,255,0.7);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(234,215,209,0.5);
-      padding: 2.5rem 1.8rem;
-      text-align: center;
-      transition: transform .3s, box-shadow .3s, border-color .3s;
-    }
-    .benefit-card:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 20px 48px rgba(180,140,130,0.15);
-      border-color: var(--rose-deep);
-    }
-
-    .benefit-icon {
-      width: 52px; height: 52px;
-      margin: 0 auto 1.5rem;
-      background: var(--rose);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .benefit-icon svg { width: 22px; height: 22px; stroke: var(--rose-deep); }
-
-    .benefit-title {
-      font-family: var(--ff-serif);
-      font-size: 1.05rem; font-weight: 600;
-      color: var(--ink);
-      margin-bottom: 0.6rem;
-    }
-    .benefit-desc {
-      font-size: 0.82rem; font-weight: 300;
-      line-height: 1.65;
-      color: var(--ink-lt);
-    }
+/* ── CARROSSEL DE MARCAS ── */
+.brands-carousel-wrap {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+.brands-track {
+  display: flex;
+  gap: 2.5rem;
+  width: max-content;
+  animation: brandScroll 28s linear infinite;
+}
+.brands-track:hover { animation-play-state: paused; }
+@keyframes brandScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.brand-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .8rem;
+  min-width: 140px;
+  cursor: default;
+}
+.brand-logo {
+  width: 100px;
+  height: 60px;
+  object-fit: contain;
+  filter: grayscale(1) opacity(.5);
+  transition: filter .3s;
+}
+.brand-item:hover .brand-logo { filter: grayscale(0) opacity(1); }
+.brand-name {
+  font-size: .72rem;
+  letter-spacing: .08em;
+  color: var(--ink-lt);
+  text-transform: uppercase;
+}
 
     /* ── CATALOG (replaces old products) ── */
     .catalog { background: #FAF4F2; padding: 3rem 2rem; }
@@ -664,6 +657,14 @@
     }
     .modal-wpp:hover { background: #1ebe5c; }
     .modal-wpp svg { width: 18px; height: 18px; fill: currentColor; }
+    .modal-mp {
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      padding: .85rem 1.2rem; border-radius: 8px;
+      background: #009EE3; color: #fff;
+      font-family: var(--ff-sans); font-size: .82rem; font-weight: 500; letter-spacing: .04em;
+      text-decoration: none; transition: background .2s, transform .2s;
+    }
+    .modal-mp:hover { background: #0080C0; transform: translateY(-2px); }
 
     @media (max-width: 860px) {
       .catalog-layout { grid-template-columns: 1fr; }
@@ -680,18 +681,8 @@
        ADMIN PANEL
     ══════════════════════════════════════ */
 
-    /* Floating admin button */
-    .admin-fab {
-      position: fixed; bottom: 6rem; right: 2rem; z-index: 199;
-      width: 46px; height: 46px; border-radius: 50%;
-      background: var(--ink);
-      border: 2px solid var(--rose);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-      transition: background .25s, transform .2s;
-    }
-    .admin-fab:hover { background: #444; transform: rotate(20deg); }
-    .admin-fab svg { width: 20px; height: 20px; stroke: var(--rose); fill: none; }
+    /* Floating admin button — oculto; acesso via 5 cliques na logo */
+    .admin-fab { display: none; }
 
     /* Login overlay */
     .admin-login-overlay {
@@ -792,6 +783,16 @@
 
     /* Product list in admin */
     .admin-prod-list { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem; }
+  /* Toggle de visibilidade de categorias */
+  .cat-toggle { position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0; }
+  .cat-toggle input { opacity:0;width:0;height:0; }
+  .cat-toggle-slider { position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,.12);border-radius:20px;transition:.25s; }
+  .cat-toggle-slider:before { content:'';position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:rgba(255,255,255,.4);border-radius:50%;transition:.25s; }
+  .cat-toggle input:checked + .cat-toggle-slider { background:var(--rose-deep,#C4A090); }
+  .cat-toggle input:checked + .cat-toggle-slider:before { transform:translateX(16px);background:#fff; }
+  .cat-toggle-sm { width:30px;height:17px; }
+  .cat-toggle-sm .cat-toggle-slider:before { height:11px;width:11px; }
+  .cat-toggle-sm input:checked + .cat-toggle-slider:before { transform:translateX(13px); }
     .admin-prod-item {
       display: flex; align-items: center; gap: 0.9rem;
       padding: 0.8rem 1rem;
@@ -1489,9 +1490,50 @@
       transition: all .2s;
     }
     .cart-clear-btn:hover { border-color: #B85C5C; color: #B85C5C; }
-  </style>
+  
+    /* ── BOTÃO MERCADO PAGO ── */
+    .cart-mp-btn {
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      width: 100%; padding: .85rem 1rem;
+      background: #009ee3;
+      color: #fff;
+      font-family: var(--ff-sans);
+      font-size: .78rem; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase;
+      border: none; cursor: pointer;
+      transition: background .25s, transform .2s;
+      margin-bottom: .5rem;
+    }
+    .cart-mp-btn:hover { background: #007cbf; transform: translateY(-1px); }
+    .cart-mp-btn:disabled { background: #aaa; cursor: not-allowed; transform: none; }
 
-  <link rel="canonical" href="https://nimari.netlify.app/">
+    /* ── MODAL PAGAMENTO ── */
+    #mpStatusModal {
+      display: none; position: fixed; inset: 0; z-index: 999;
+      background: rgba(45,45,45,.6); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+    }
+    #mpStatusModal.open { display: flex; }
+    .mp-modal-box {
+      background: var(--bg); max-width: 420px; width: 90%;
+      padding: 2.5rem 2rem; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .mp-modal-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .mp-modal-title {
+      font-family: var(--ff-serif); font-size: 1.5rem;
+      color: var(--ink); margin-bottom: .5rem;
+    }
+    .mp-modal-sub { font-size: .9rem; color: var(--ink-lt); margin-bottom: 1.5rem; line-height: 1.6; }
+    .mp-modal-close {
+      background: var(--ink); color: #fff; border: none; cursor: pointer;
+      padding: .75rem 2rem; font-family: var(--ff-sans);
+      font-size: .78rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+    }
+    .mp-modal-close:hover { background: var(--rose-deep); }
+</style>
+
+  <link rel="canonical" href="https://www.nimari.com.br/">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -1571,36 +1613,11 @@
       <h2 class="section-title reveal delay-1 visible">Da mãe à filha, do conforto ao desejo</h2>
       <p class="section-subtitle reveal delay-2 visible">Qualidade que você sente na pele, elegância que você vê no espelho. Na Nimari, cuidamos de você e de quem você ama.</p>
     </div>
-    <div class="benefits-grid">
-      <div class="benefit-card reveal delay-1 visible">
-        <div class="benefit-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"></path></svg>
-        </div>
-        <h3 class="benefit-title">Diamantes Lingerie  </h3>
-        <p class="benefit-desc">Lingerie feminina com modelagem pensada para o corpo real — conforto e sensualidade em perfeito equilíbrio.</p>
-      </div>
-      <div class="benefit-card reveal delay-2 visible">
-        <div class="benefit-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"></path></svg>
-        </div>
-        <h3 class="benefit-title">Marbelle</h3>
-        <p class="benefit-desc">Moda íntima com design sofisticado e tecidos de alta qualidade, do básico ao especial.</p>
-      </div>
-      <div class="benefit-card reveal delay-3 visible">
-        <div class="benefit-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-        </div>
-        <h3 class="benefit-title">O Boticário</h3>
-        <p class="benefit-desc">Perfumes, maquiagens e cuidados que fazem parte da rotina de beleza de milhões de brasileiras.</p>
-      </div>
-      <div class="benefit-card reveal delay-4 visible">
-        <div class="benefit-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-        </div>
-        <h3 class="benefit-title">Natura</h3>
-        <p class="benefit-desc">Cosméticos com propósito. Ingredientes naturais, fórmulas eficientes e respeito à sua pele e ao planeta.</p>
-      </div>
-    </div>
+    <div class="brands-carousel-wrap">
+  <div class="brands-track" id="brandsTrack">
+    <!-- populado via JS -->
+  </div>
+</div>
   </div>
 </section>
 
@@ -1761,6 +1778,10 @@
         <a class="modal-wpp" id="modalWpp" href="https://wa.me/5598985631126?text=Ol%C3%A1!%20Gostaria%20de%20comprar%20Lo%C3%A7%C3%A3o%20Desodorante%20Hidratante%20Cuide-se%20Bem%20Feira%20Banana%20400ml" target="_blank" rel="noopener noreferrer">
           <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"></path></svg>
           Comprar pelo WhatsApp
+        </a>
+        <a class="modal-mp" id="modalMp" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-1.97 9.33c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.16 14.36l-2.95-.924c-.64-.203-.654-.64.136-.954l11.527-4.443c.537-.194 1.006.131.689.209z"/></svg>
+          Pagar pelo Mercado Pago
         </a>
       </div>
     </div>
@@ -1953,14 +1974,30 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
       <label class="cart-name-label" for="cartCustomerAddress">Seu Endereço *</label>
       <input class="cart-name-input" id="cartCustomerAddress" type="text" placeholder="Digite seu endereço completo" maxlength="120" autocomplete="street-address">
     </div>
-    <a class="cart-finalize-btn" id="cartFinalizeBtn" href="#" onclick="return finalizeOrder()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg>
-      Enviar Pedido pelo WhatsApp
+    <button class="cart-finalize-btn cart-mp-btn" id="cartMpBtn" onclick="checkoutMP()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Pagar com Mercado Pago
+    </button>
+    <p class="cart-finalize-note" style="margin-bottom:.5rem">PIX · Cartão · Boleto — processado pelo Mercado Pago</p>
+    <a class="cart-finalize-btn" id="cartFinalizeBtn" href="#" onclick="return finalizeOrder()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);font-size:.7rem;justify-content:center;gap:.4rem;display:flex;align-items:center;padding:.7rem 1rem;text-decoration:none;margin-top:.4rem;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg>
+      Ou enviar pedido pelo WhatsApp
     </a>
     <p class="cart-finalize-note">Você será redirecionado para o WhatsApp com o resumo do pedido.</p>
     <button class="cart-clear-btn" onclick="clearCart()">🗑️ Limpar carrinho</button>
   </div>
 </aside>
+
+
+<!-- ── MODAL STATUS PAGAMENTO MERCADO PAGO ── -->
+<div id="mpStatusModal">
+  <div class="mp-modal-box">
+    <div class="mp-modal-icon" id="mpModalIcon">🎉</div>
+    <h2 class="mp-modal-title" id="mpModalTitle">Pagamento aprovado!</h2>
+    <p class="mp-modal-sub" id="mpModalSub">Seu pedido foi confirmado. Em breve entraremos em contato.</p>
+    <button class="mp-modal-close" onclick="closeMpModal()">Fechar</button>
+  </div>
+</div>
 
 <!-- ── ADMIN FAB ── -->
 <button class="admin-fab" id="adminFab" aria-label="Painel Admin" title="Painel Administrativo">
@@ -2080,6 +2117,11 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
         </div>
 
         <div class="admin-field">
+          <label class="admin-label">Link Mercado Pago (opcional)</label>
+          <input class="admin-inp" type="url" id="editMpLink" placeholder="https://mpago.la/...">
+        </div>
+
+        <div class="admin-field">
           <label class="admin-label">Tag / Badge</label>
           <div class="badge-selector">
             <span class="badge-opt" data-val="none">Nenhum</span>
@@ -2169,6 +2211,11 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
       </div>
 
       <div class="admin-field">
+        <label class="admin-label">Link Mercado Pago (opcional)</label>
+        <input class="admin-inp" type="url" id="addMpLink" placeholder="https://mpago.la/...">
+      </div>
+
+      <div class="admin-field">
         <label class="admin-label">Tag / Badge</label>
         <div class="badge-selector" id="addBadgeSelector">
           <span class="badge-opt sel" data-val="none">Nenhum</span>
@@ -2180,6 +2227,38 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
 
       <div class="admin-field">
         <button class="admin-save-btn" onclick="addNewProduct()" style="width:100%;">➕ Adicionar Produto</button>
+      </div>
+
+      <!-- ── IMPORTAÇÃO EM LOTE ── -->
+      <div class="admin-field" style="margin-top:1.5rem;border-top:1px solid rgba(255,255,255,.08);padding-top:1.5rem;">
+        <label class="admin-label">📂 Importar em Lote (Excel)</label>
+        <p style="font-size:.72rem;color:rgba(255,255,255,.35);margin-bottom:.8rem;line-height:1.6;">
+          Suba um arquivo <strong style="color:rgba(255,255,255,.55);">.xlsx</strong> com os produtos. Colunas obrigatórias: <code style="color:var(--gold);font-size:.7rem;">nome</code> e <code style="color:var(--gold);font-size:.7rem;">preco</code>.
+          Opcionais: <code style="color:rgba(255,255,255,.4);font-size:.7rem;">descricao, preco_antigo, imagem_url, categoria, subcategoria, whatsapp, badge</code>.
+        </p>
+        <a id="csvTemplateLink" href="#" onclick="downloadCsvTemplate(); return false;"
+           style="display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--gold);text-decoration:none;margin-bottom:.8rem;opacity:.85;transition:opacity .2s;"
+           onmouseover="this.style.opacity=1" onmouseout="this.style.opacity='.85'">
+          📥 Baixar modelo Excel
+        </a>
+        <div class="img-upload-area" id="csvDropArea" onclick="document.getElementById('csvFileInput').click()"
+             style="padding:1.2rem;text-align:center;cursor:pointer;">
+          <input type="file" id="csvFileInput" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="handleCsvFile(this.files[0])">
+          <p style="font-size:.8rem;color:rgba(255,255,255,.4);">📊 Clique ou arraste o arquivo <strong>.xlsx</strong> aqui</p>
+        </div>
+        <!-- Preview da tabela -->
+        <div id="csvPreviewArea" style="display:none;margin-top:1rem;">
+          <p id="csvPreviewInfo" style="font-size:.75rem;color:rgba(255,255,255,.5);margin-bottom:.6rem;"></p>
+          <div id="csvPreviewTable" style="overflow-x:auto;max-height:220px;border:1px solid rgba(255,255,255,.08);border-radius:4px;"></div>
+          <div style="display:flex;gap:.6rem;margin-top:.8rem;flex-wrap:wrap;">
+            <button class="admin-save-btn" id="csvImportBtn" onclick="executarImportacaoLote()" style="flex:1;min-width:140px;">✅ Importar Produtos</button>
+            <button onclick="cancelarCsvImport()"
+                    style="flex:1;min-width:100px;padding:.7rem 1rem;background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);font-size:.75rem;letter-spacing:.08em;cursor:pointer;transition:border-color .2s;"
+                    onmouseover="this.style.borderColor='rgba(255,255,255,.35)'" onmouseout="this.style.borderColor='rgba(255,255,255,.15)'">
+              ✕ Cancelar
+            </button>
+          </div>
+        </div>
       </div>
 
     </div><!-- /tab-add -->
@@ -2305,11 +2384,39 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
         <p class="admin-add-note" style="margin-bottom:1rem;">Para alterar a senha, acesse o banco de dados e atualize o usuário admin.</p>
         <p style="font-size:.72rem;color:rgba(255,255,255,.25);">Senha atual: protegida no código-fonte.</p>
       </div>
+
+      <!-- ── VISIBILIDADE DE CATEGORIAS ── -->
+      <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,.08);">
+        <label class="admin-label" style="margin-bottom:.4rem;">🗂️ Visibilidade das Categorias</label>
+        <p style="font-size:.72rem;color:rgba(255,255,255,.35);line-height:1.6;margin-bottom:1.2rem;">
+          Bloqueie categorias ou subcategorias que estão sem estoque. Elas ficam ocultas no menu do site para os clientes.
+        </p>
+        <div id="catVisibilityList"></div>
+        <p style="font-size:.68rem;color:rgba(255,255,255,.2);margin-top:.8rem;">As alterações são salvas automaticamente ao clicar no toggle.</p>
+      </div>
     </div>
+    <button onclick="excluirTodosProdutos()"
+      style="display:block;width:calc(100% - 3.6rem);margin:0 1.8rem .6rem;padding:.75rem 1rem;
+             background:transparent;border:1px solid rgba(220,80,80,.35);color:rgba(220,80,80,.7);
+             font-family:var(--ff-sans);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;
+             cursor:pointer;transition:border-color .2s,color .2s;"
+      onmouseover="this.style.borderColor='rgba(220,80,80,.8)';this.style.color='rgba(220,80,80,1)'"
+      onmouseout="this.style.borderColor='rgba(220,80,80,.35)';this.style.color='rgba(220,80,80,.7)'">
+      🗑️ Excluir todos os produtos
+    </button>
     <button class="admin-logout-btn" onclick="adminLogout()">🚪 Sair do painel</button>
   </div>
 </div>
-
+<!-- ── MARCAS ── -->
+<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,.08);">
+  <label class="admin-label" style="margin-bottom:.8rem;">🏷️ Marcas do Carrossel</label>
+  <div id="adminMarcasList" style="margin-bottom:1rem;"></div>
+  <div style="display:flex;flex-direction:column;gap:.5rem;">
+    <input class="admin-inp" id="novaMarcaNome" placeholder="Nome da marca">
+    <input class="admin-inp" id="novaMarcaLogo" type="url" placeholder="URL da logo (Supabase)">
+    <button class="admin-save-btn" onclick="adicionarMarca()" style="width:100%;">➕ Adicionar Marca</button>
+  </div>
+</div>
 <!-- ── TOAST ── -->
 <div class="admin-toast" id="adminToast">✅ Produto atualizado com sucesso!</div>
 
@@ -2432,7 +2539,81 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
   
   // init counts após carregar produtos
   // applyFilter() será chamado após loadSavedProducts()
+  // ── CARROSSEL DE MARCAS
+async function loadMarcas() {
+  try {
+    const res  = await fetch(API_URL + '/marcas');
+    const list = res.ok ? await res.json() : [];
+    const track = document.getElementById('brandsTrack');
+    if (!track || !list.length) return;
+    // Duplica para loop infinito
+    const items = [...list, ...list];
+    track.innerHTML = items.map(m => `
+      <div class="brand-item">
+        <img class="brand-logo" src="${m.logo_url}" alt="${m.nome}"
+             onerror="this.style.display='none'">
+        <span class="brand-name">${m.nome}</span>
+      </div>`).join('');
+  } catch(e) {}
+}
+loadMarcas();
+// ── ADMIN MARCAS
+async function loadAdminMarcas() {
+  try {
+    const res  = await fetch(API_URL + '/marcas');
+    const list = res.ok ? await res.json() : [];
+    const el   = document.getElementById('adminMarcasList');
+    if (!el) return;
+    el.innerHTML = list.map(m => `
+      <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.06);">
+        <img src="${m.logo_url}" style="width:40px;height:28px;object-fit:contain;filter:brightness(1.5);"
+             onerror="this.style.display='none'">
+        <span style="flex:1;font-size:.78rem;color:rgba(255,255,255,.7);">${m.nome}</span>
+        <button onclick="removerMarca(${m.id})"
+          style="background:transparent;border:none;color:rgba(220,80,80,.7);cursor:pointer;font-size:.8rem;">🗑️</button>
+      </div>`).join('') || '<p style="font-size:.75rem;color:rgba(255,255,255,.3);">Nenhuma marca cadastrada.</p>';
+  } catch(e) {}
+}
 
+async function adicionarMarca() {
+  const nome    = document.getElementById('novaMarcaNome').value.trim();
+  const logoUrl = document.getElementById('novaMarcaLogo').value.trim();
+  if (!nome || !logoUrl) { showToast('⚠️ Preencha nome e URL da logo.'); return; }
+  try {
+    const res = await fetch(API_URL + '/marcas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
+      body: JSON.stringify({ nome, logo_url: logoUrl })
+    });
+    if (res.ok) {
+      document.getElementById('novaMarcaNome').value = '';
+      document.getElementById('novaMarcaLogo').value = '';
+      showToast('✅ Marca adicionada!');
+      loadAdminMarcas();
+      loadMarcas();
+    }
+  } catch(e) { showToast('❌ Erro ao adicionar marca.'); }
+}
+
+async function removerMarca(id) {
+  if (!confirm('Remover esta marca do carrossel?')) return;
+  try {
+    await fetch(API_URL + '/marcas/' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + adminToken }
+    });
+    showToast('🗑️ Marca removida.');
+    loadAdminMarcas();
+    loadMarcas();
+  } catch(e) {}
+}
+
+// Carrega lista no painel quando abre a aba CONFIG
+document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+  if (btn.dataset.tab === 'config') {
+    btn.addEventListener('click', loadAdminMarcas);
+  }
+});
   // ── PRODUCT MODAL ──
   function openModal(card) {
     const img      = card.querySelector('.product-img');
@@ -2462,6 +2643,10 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
     }
     const wppMsg = encodeURIComponent(`Olá! Gostaria de comprar ${name}`);
     document.getElementById('modalWpp').href = `https://wa.me/${globalWppNumber}?text=${wppMsg}`;
+    const mpLink = card.dataset.mp || '';
+    const modalMp = document.getElementById('modalMp');
+    if (mpLink) { modalMp.href = mpLink; modalMp.style.display = 'flex'; }
+    else { modalMp.style.display = 'none'; }
     document.getElementById('modalOverlay').classList.add('open');
     document.body.style.overflow = 'hidden';
   }
@@ -2479,8 +2664,8 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
      ADMIN PANEL
   ════════════════════════════════════════════ */
   const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? 'http://localhost:3001/api'
-  : 'https://nimari-backend.onrender.com/api';
+    ? 'http://localhost:3001/api'
+    : 'https://nimari-backend-production.up.railway.app/api';
 
   // Carrega número do WhatsApp da API
   fetch(API_URL + '/config/wpp_number')
@@ -2546,6 +2731,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
     if (p.desc)     card.querySelector('.product-desc').textContent = p.desc;
     if (p.price)    card.querySelector('.product-price').textContent = 'R$ ' + p.price;
     // cat / sub
+    if (p.mp_link !== undefined) card.dataset.mp = p.mp_link || '';
     if (p.cat) card.dataset.cat = p.cat;
     if (p.sub) {
       card.dataset.sub = p.sub;
@@ -2594,6 +2780,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
         badge:     badge,
         cat:       card.dataset.cat,
         sub:       card.dataset.sub,
+        mp_link:   document.getElementById('editMpLink').value.trim(),
         wpp:       card.dataset.wpp || WPP_DEFAULT,
       };
       if (!payload.uid) continue;
@@ -2642,10 +2829,25 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
   // Restaura sessão admin se token ainda válido
   if (adminToken) adminAuthenticated = true;
 
-  document.getElementById('adminFab').addEventListener('click', () => {
-    if (adminAuthenticated) { openAdminPanel(); }
-    else { document.getElementById('adminLoginOverlay').classList.add('open'); document.getElementById('adminPwdInput').focus(); }
-  });
+  // 5 cliques na logo dentro de 3 segundos abre o painel admin
+  (function() {
+    const logo = document.querySelector('header .logo');
+    if (!logo) return;
+    let clicks = 0, timer = null;
+    logo.addEventListener('click', function(e) {
+      clicks++;
+      if (clicks === 1) {
+        timer = setTimeout(() => { clicks = 0; }, 3000);
+      }
+      if (clicks >= 5) {
+        clearTimeout(timer);
+        clicks = 0;
+        e.preventDefault();
+        if (adminAuthenticated) { openAdminPanel(); }
+        else { document.getElementById('adminLoginOverlay').classList.add('open'); document.getElementById('adminPwdInput').focus(); }
+      }
+    });
+  })();
 
   async function adminLogin() {
     const pwd = document.getElementById('adminPwdInput').value;
@@ -2859,7 +3061,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
       const item  = document.createElement('div');
       item.className = 'admin-prod-item';
       item.innerHTML = `
-        <img class="admin-prod-thumb" src="${img}" alt="${name}" />
+        <img class="admin-prod-thumb" src="${img}" alt="${name}" onerror="this.src='https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg'" />
         <div class="admin-prod-info">
           <p class="admin-prod-item-name">${name}</p>
           <p class="admin-prod-item-cat">${cat}</p>
@@ -2938,6 +3140,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
 
     // WhatsApp number
     document.getElementById('editWpp').value = card.dataset.wpp || WPP_DEFAULT;
+    document.getElementById('editMpLink').value = card.dataset.mp || '';
 
     // Image preview via URL
     const imgSrc = card.querySelector('.product-img').src;
@@ -3072,6 +3275,7 @@ card.dataset.uid  = uid;
     card.dataset.name = p.name || 'Novo Produto';
     card.dataset.isnew = '1';
     card.dataset.wpp   = ((p.wpp || WPP_DEFAULT).replace(/\D/g,'')) || WPP_DEFAULT;
+    card.dataset.mp    = p.mp_link || p.mp || '';
 
     const imgSrc = p.img || 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg';
     const catLabel = subLabels[p.sub] || p.cat || '';
@@ -3085,7 +3289,7 @@ card.dataset.uid  = uid;
     card.innerHTML = `
       ${badgeHtml}
       <div class="product-img-wrap">
-        <img class="product-img" src="${imgSrc}" alt="${sanitizeHTML(p.name)}" loading="lazy"/>
+        <img class="product-img" src="${imgSrc}" alt="${sanitizeHTML(p.name)}" loading="lazy" onerror="this.src='https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg'"/>
         <div class="product-overlay"><button class="product-overlay-btn">Ver Detalhes</button></div>
       </div>
       <div class="product-info">
@@ -3113,13 +3317,14 @@ card.dataset.uid  = uid;
     const cat      = document.getElementById('addCat').value;
     const sub      = document.getElementById('addSub').value;
     const wpp      = document.getElementById('addWpp').value.trim() || WPP_DEFAULT;
+    const mp_link  = document.getElementById('addMpLink').value.trim();
     const img      = document.getElementById('addImgUrl').value.trim() || addImgData || '';
 
     if (!name || !price) { showToast('⚠️ Preencha o nome e o preço!'); return; }
     if (!adminToken) { showToast('⚠️ Faça login novamente.'); return; }
 
     const uid = 'pnew_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-    const payload = { uid, name, descricao: desc, price, price_old: priceOld, img, badge: addBadgeVal || 'none', cat, sub, wpp };
+    const payload = { uid, name, descricao: desc, price, price_old: priceOld, img, badge: addBadgeVal || 'none', cat, sub, wpp, mp_link };
 
     try {
       showToast('⏳ Salvando produto...');
@@ -3130,7 +3335,7 @@ card.dataset.uid  = uid;
       });
       if (!res.ok) { showToast('❌ Erro ao salvar produto.'); return; }
 
-      createProductCard({ uid, name, desc, price, priceOld, img, badge: addBadgeVal || 'none', cat, sub, wpp });
+      createProductCard({ uid, name, desc, price, priceOld, img, badge: addBadgeVal || 'none', cat, sub, wpp, mp_link });
       showToast('🎉 Produto adicionado ao catálogo!');
 
       // Reset form
@@ -3139,6 +3344,7 @@ card.dataset.uid  = uid;
       document.getElementById('addPrice').value = '';
       document.getElementById('addPriceOld').value = '';
       document.getElementById('addWpp').value = '';
+      document.getElementById('addMpLink').value = '';
       document.getElementById('addImgPreview').classList.remove('show');
       document.getElementById('addImgPlaceholder').style.display = '';
       const _aiu = document.getElementById('addImgUrl'); if(_aiu) _aiu.value = '';
@@ -3150,10 +3356,358 @@ card.dataset.uid  = uid;
     }
   }
 
+  // ── IMPORTAÇÃO EM LOTE CSV ──────────────────────────────────────────
+
+  let csvProdutosParsed = [];
+
+  const CSV_CAMPOS = ['nome','preco','descricao','preco_antigo','imagem_url','categoria','subcategoria','whatsapp','badge','mp_link'];
+
+  // Gera modelo .xlsx com SheetJS
+  function downloadCsvTemplate() {
+    const wb = XLSX.utils.book_new();
+    const dados = [
+      CSV_CAMPOS,
+      ['Perfume Floral Nimari','79,90','Fragrância floral delicada','99,90','','cosmeticos','perf-fem','5511999999999','novo']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(dados);
+    ws['!cols'] = CSV_CAMPOS.map((_, i) => ({ wch: i === 0 ? 30 : i === 2 ? 35 : 18 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
+    XLSX.writeFile(wb, 'modelo_produtos_nimari.xlsx');
+  }
+
+  // Parse .xlsx com SheetJS
+  function formatarPrecoXlsx(val) {
+    if (val === '' || val == null) return '';
+    const n = parseFloat(String(val).replace(',', '.'));
+    if (isNaN(n)) return String(val).trim();
+    // Formata para 2 casas e usa vírgula decimal (padrão BR)
+    return n.toFixed(2).replace('.', ',');
+  }
+
+  function parseXlsxProdutos(arrayBuffer) {
+    const wb  = XLSX.read(arrayBuffer, { type: 'array' });
+    const ws  = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if (raw.length < 2) return [];
+    const cabecalho = raw[0].map(c => String(c).trim().toLowerCase());
+    const camposPreco = ['preco', 'preco_antigo'];
+    return raw.slice(1).map(row => {
+      const obj = {};
+      cabecalho.forEach((col, i) => {
+        obj[col] = camposPreco.includes(col)
+          ? formatarPrecoXlsx(row[i])
+          : String(row[i] ?? '').trim();
+      });
+      return obj;
+    }).filter(p => p.nome && p.preco);
+  }
+
+  function handleCsvFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      csvProdutosParsed = parseXlsxProdutos(e.target.result);
+      if (!csvProdutosParsed.length) { showToast('⚠️ Nenhum produto válido encontrado no arquivo.'); return; }
+      renderCsvPreview(csvProdutosParsed);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function renderCsvPreview(produtos) {
+    const area  = document.getElementById('csvPreviewArea');
+    const info  = document.getElementById('csvPreviewInfo');
+    const tabEl = document.getElementById('csvPreviewTable');
+    info.textContent = `${produtos.length} produto(s) encontrado(s) — revise antes de importar:`;
+
+    const cols = ['nome','preco','descricao','categoria','subcategoria','badge'];
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:.7rem;">';
+    html += '<thead><tr>' + cols.map(c =>
+      `<th style="padding:.4rem .6rem;text-align:left;color:var(--gold);border-bottom:1px solid rgba(255,255,255,.1);white-space:nowrap;">${c}</th>`
+    ).join('') + '</tr></thead><tbody>';
+    produtos.forEach(p => {
+      html += '<tr>' + cols.map(c =>
+        `<td style="padding:.35rem .6rem;color:rgba(255,255,255,.6);border-bottom:1px solid rgba(255,255,255,.05);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p[c] || '—'}</td>`
+      ).join('') + '</tr>';
+    });
+    html += '</tbody></table>';
+    tabEl.innerHTML = html;
+    area.style.display = 'block';
+  }
+
+  // Normaliza valores legíveis do Excel para os slugs internos do sistema
+  function _slug(v) { return String(v||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,'-'); }
+
+  function normalizarCat(v) {
+    const MAP = {
+      'cosmeticos':'cosmeticos','cosméticos':'cosmeticos','cosmético':'cosmeticos',
+      'confeccao':'confeccao','confecção':'confeccao','confeccão':'confeccao','confecao':'confeccao',
+      'kit':'kit'
+    };
+    return MAP[_slug(v)] || MAP[String(v||'').trim().toLowerCase()] || v || 'cosmeticos';
+  }
+
+  function normalizarSub(v) {
+    const MAP = {
+      // cosméticos
+      'pele':'pele','cuidados com a pele':'pele',
+      'cabelo':'cabelo','cuidados com o cabelo':'cabelo',
+      'perf-fem':'perf-fem','perfumaria feminina':'perf-fem',
+      'perf-masc':'perf-masc','perfumaria masculina':'perf-masc',
+      'infantil-cosm':'infantil-cosm','cosmeticos infantil':'infantil-cosm','infantil':'infantil-cosm',
+      'outros-cosm':'outros-cosm','outros cosmeticos':'outros-cosm',
+      // confecção
+      'intima-fem':'intima-fem','moda intima feminina':'intima-fem','moda íntima feminina':'intima-fem',
+      'intima-inf':'intima-inf','moda intima infantil':'intima-inf','moda íntima infantil':'intima-inf',
+      'sutia':'sutia','sutiã':'sutia','sutia':'sutia',
+      'calcinha':'calcinha',
+      'outros-conf':'outros-conf','outros confeccao':'outros-conf','outros confecção':'outros-conf',
+      // kit
+      'kit-presente':'kit-presente','kit presente':'kit-presente'
+    };
+    const key = String(v||'').trim().toLowerCase();
+    return MAP[key] || MAP[_slug(v)] || v || 'outros-cosm';
+  }
+
+  function normalizarBadge(v) {
+    const MAP = {
+      'novo':'novo','new':'novo',
+      'vendido':'vendido','mais vendido':'vendido',
+      'oferta':'oferta','promoção':'oferta','promocao':'oferta'
+    };
+    const key = String(v||'').trim().toLowerCase();
+    return MAP[key] || 'none';
+  }
+
+  async function executarImportacaoLote() {
+    if (!csvProdutosParsed.length) return;
+    if (!adminToken) { showToast('⚠️ Faça login novamente.'); return; }
+
+    const btn = document.getElementById('csvImportBtn');
+    btn.disabled = true;
+
+    let ok = 0, erros = 0;
+    for (const p of csvProdutosParsed) {
+      const uid     = 'pnew_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      const payload = {
+        uid,
+        name:       p.nome        || '',
+        descricao:  p.descricao   || '',
+        price:      p.preco       || '',
+        price_old:  p.preco_antigo|| '',
+        img:        p.imagem_url  || '',
+        badge:      normalizarBadge(p.badge),
+        cat:        normalizarCat(p.categoria),
+        sub:        normalizarSub(p.subcategoria),
+        wpp:        p.whatsapp    || WPP_DEFAULT,
+        mp_link:    p.mp_link     || ''
+      };
+      try {
+        const res = await fetch(API_URL + '/produtos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          createProductCard({ uid, name: payload.name, desc: payload.descricao, price: payload.price,
+            priceOld: payload.price_old, img: payload.img, badge: payload.badge, cat: payload.cat,
+            sub: payload.sub, wpp: payload.wpp, mp_link: payload.mp_link });
+          ok++;
+        } else { erros++; }
+      } catch(e) { erros++; }
+    }
+
+    btn.disabled = false;
+    applyFilter();
+    cancelarCsvImport();
+    showToast(erros === 0
+      ? `🎉 ${ok} produto(s) importado(s) com sucesso!`
+      : `⚠️ ${ok} importado(s), ${erros} com erro.`);
+  }
+
+  function cancelarCsvImport() {
+    csvProdutosParsed = [];
+    document.getElementById('csvPreviewArea').style.display = 'none';
+    document.getElementById('csvFileInput').value = '';
+  }
+
+  // Drag & drop na área CSV
+  (function() {
+    const area = document.getElementById('csvDropArea');
+    if (!area) return;
+    area.addEventListener('dragover',  e => { e.preventDefault(); area.style.borderColor = 'var(--gold)'; });
+    area.addEventListener('dragleave', ()  => { area.style.borderColor = ''; });
+    area.addEventListener('drop',      e  => {
+      e.preventDefault(); area.style.borderColor = '';
+      const file = e.dataTransfer.files[0];
+      if (file) handleCsvFile(file);
+    });
+  })();
+
+  // ── VISIBILIDADE DE CATEGORIAS ─────────────────────────────────────
+
+  const CAT_TREE = [
+    { slug: 'cosmeticos', label: 'Cosméticos', subs: [
+      { slug: 'pele',          label: 'Cuidados com a Pele' },
+      { slug: 'cabelo',        label: 'Cuidados com o Cabelo' },
+      { slug: 'perf-fem',      label: 'Perfumaria Feminina' },
+      { slug: 'perf-masc',     label: 'Perfumaria Masculina' },
+      { slug: 'infantil-cosm', label: 'Infantil' },
+      { slug: 'outros-cosm',   label: 'Outros' },
+    ]},
+    { slug: 'confeccao', label: 'Confecção', subs: [
+      { slug: 'intima-fem',  label: 'Moda Íntima Feminina' },
+      { slug: 'intima-inf',  label: 'Moda Íntima Infantil' },
+      { slug: 'sutia',       label: 'Sutiã' },
+      { slug: 'calcinha',    label: 'Calcinha' },
+      { slug: 'outros-conf', label: 'Outros' },
+    ]},
+    { slug: 'kit', label: 'Kit', subs: [
+      { slug: 'kit-presente', label: 'Kit Presente' },
+    ]},
+  ];
+
+  // Estado em memória — carregado da API na abertura do painel
+  let catVisState = {}; // { 'cosmeticos': true, 'pele': false, ... }  true = visível
+
+  function catVisKey(slug) { return 'catvis_' + slug; }
+
+  async function loadCatVisibility() {
+    try {
+      const res = await fetch(API_URL + '/config/cat_visibility');
+      if (res.ok) {
+        const data = await res.json();
+        const raw  = data?.valor ?? data?.value;
+        catVisState = raw ? JSON.parse(raw) : {};
+      }
+    } catch(e) { catVisState = {}; }
+    renderCatVisibility();
+    applyCatVisibility();
+  }
+
+  async function saveCatVisibility() {
+    try {
+      await fetch(API_URL + '/config/cat_visibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
+        body: JSON.stringify({ valor: JSON.stringify(catVisState) })
+      });
+    } catch(e) {}
+  }
+
+  function isCatVisible(slug) {
+    return catVisState[slug] !== false; // padrão: visível
+  }
+
+  function renderCatVisibility() {
+    const container = document.getElementById('catVisibilityList');
+    if (!container) return;
+    let html = '';
+    CAT_TREE.forEach(cat => {
+      const catOn = isCatVisible(cat.slug);
+      html += `<div style="margin-bottom:1rem;border:1px solid rgba(255,255,255,.07);border-radius:6px;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:rgba(255,255,255,.04);">
+          <span style="font-size:.8rem;font-weight:600;letter-spacing:.08em;color:${catOn ? 'rgba(255,255,255,.85)' : 'rgba(255,255,255,.3)'};">
+            ${cat.label.toUpperCase()}
+          </span>
+          <label class="cat-toggle" title="${catOn ? 'Bloquear categoria' : 'Liberar categoria'}">
+            <input type="checkbox" ${catOn ? 'checked' : ''} onchange="toggleCatVis('${cat.slug}', this.checked)">
+            <span class="cat-toggle-slider"></span>
+          </label>
+        </div>`;
+      cat.subs.forEach(sub => {
+        const subOn = isCatVisible(sub.slug);
+        html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:.55rem 1rem .55rem 1.8rem;border-top:1px solid rgba(255,255,255,.05);">
+          <span style="font-size:.75rem;color:${subOn ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.2)'};">${sub.label}</span>
+          <label class="cat-toggle cat-toggle-sm" title="${subOn ? 'Bloquear' : 'Liberar'}">
+            <input type="checkbox" ${subOn ? 'checked' : ''} onchange="toggleCatVis('${sub.slug}', this.checked)">
+            <span class="cat-toggle-slider"></span>
+          </label>
+        </div>`;
+      });
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function toggleCatVis(slug, visible) {
+    catVisState[slug] = visible;
+    renderCatVisibility();
+    applyCatVisibility();
+    saveCatVisibility();
+    showToast(visible ? `✅ "${slug}" liberado` : `🚫 "${slug}" bloqueado`);
+  }
+
+  function applyCatVisibility() {
+    CAT_TREE.forEach(cat => {
+      const catEl  = document.getElementById('grp-' + cat.slug);
+      const subEl  = document.getElementById('sub-' + cat.slug);
+      const catOn  = isCatVisible(cat.slug);
+      if (catEl) catEl.style.display = catOn ? '' : 'none';
+      if (subEl) subEl.style.display = catOn ? '' : 'none';
+      cat.subs.forEach(sub => {
+        const subOn = isCatVisible(sub.slug);
+        document.querySelectorAll(`.sidebar-sub-item[data-sub="${sub.slug}"]`).forEach(el => {
+          el.style.display = subOn ? '' : 'none';
+        });
+      });
+    });
+  }
+
+  // ── EXCLUIR TODOS OS PRODUTOS ────────────────────────────────────────
+  async function excluirTodosProdutos() {
+    const cards = document.querySelectorAll('#productsGrid .product-card');
+    if (!cards.length) { showToast('ℹ️ Nenhum produto cadastrado.'); return; }
+
+    // Primeira confirmação
+    if (!confirm(`⚠️ Tem certeza que deseja excluir TODOS os ${cards.length} produto(s)?\n\nEssa ação não pode ser desfeita.`)) return;
+
+    // Segunda confirmação — digitar palavra-chave
+    const confirmacao = prompt('Para confirmar, digite  EXCLUIR  (em maiúsculas):');
+    if (confirmacao !== 'EXCLUIR') { showToast('❌ Confirmação incorreta. Nenhum produto foi excluído.'); return; }
+
+    if (!adminToken) { showToast('⚠️ Faça login novamente.'); return; }
+
+    const uids = Array.from(cards).map(c => c.dataset.uid).filter(Boolean);
+    let ok = 0, erros = 0;
+
+    for (let i = 0; i < uids.length; i++) {
+      showToast(`⏳ Excluindo ${i + 1}/${uids.length}...`);
+      try {
+        const res = await fetch(API_URL + '/produtos/' + uids[i], {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + adminToken }
+        });
+        if (res.ok) {
+          const card = document.querySelector(`#productsGrid .product-card[data-uid="${uids[i]}"]`);
+          if (card) card.remove();
+          ok++;
+        } else { erros++; }
+      } catch(e) { erros++; }
+    }
+
+    applyFilter();
+    showToast(erros === 0
+      ? `🗑️ ${ok} produto(s) excluído(s) com sucesso!`
+      : `⚠️ ${ok} excluído(s), ${erros} com erro.`);
+  }
+
   // ── INIT
   assignUIDs();
   addEditButtons();
   loadSavedProducts();
+  // Aplica visibilidade na carga da página (antes do painel abrir)
+  (async () => {
+    try {
+      const res = await fetch(API_URL + '/config/cat_visibility');
+      if (res.ok) {
+        const data = await res.json();
+        const raw  = data?.valor ?? data?.value;
+        if (raw) { catVisState = JSON.parse(raw); applyCatVisibility(); }
+      }
+    } catch(e) {}
+  })();
+  loadCatVisibility();
   applyGlobalWppNumber(globalWppNumber);
 
   // Carrega imagem "Sobre Nós" salva na API
@@ -3928,6 +4482,218 @@ card.dataset.uid  = uid;
     }
   }
 </script>
+<script>
+  /* ════════════════════════════════════════════
+     CHECKOUT MERCADO PAGO
+  ════════════════════════════════════════════ */
+  async function checkoutMP() {
+    if (cart.length === 0) { showToast('⚠️ Carrinho vazio!'); return; }
 
+    const nameInput    = document.getElementById('cartCustomerName');
+    const addressInput = document.getElementById('cartCustomerAddress');
+    const customerName    = nameInput    ? nameInput.value.trim()    : '';
+    const customerAddress = addressInput ? addressInput.value.trim() : '';
 
+    if (!customerName) {
+      if (nameInput) { nameInput.classList.add('error'); nameInput.focus(); }
+      showToast('⚠️ Informe seu nome antes de pagar.');
+      return;
+    }
+    if (!customerAddress) {
+      if (addressInput) { addressInput.classList.add('error'); addressInput.focus(); }
+      showToast('⚠️ Informe seu endereço antes de pagar.');
+      return;
+    }
+    nameInput.classList.remove('error');
+    addressInput.classList.remove('error');
+
+    const btn = document.getElementById('cartMpBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Gerando link de pagamento...';
+
+    try {
+      const payload = {
+        customerName,
+        customerAddress,
+        wppNumber: globalWppNumber || '',
+        items: cart.map(i => ({
+          uid:      i.uid,
+          name:     i.name,
+          desc:     i.desc || '',
+          img:      i.img  || '',
+          qty:      i.qty,
+          priceRaw: i.priceRaw,
+        }))
+      };
+
+      const res  = await fetch(API_URL + '/checkout', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.init_point) {
+        throw new Error(data.error || 'Não foi possível gerar o link de pagamento.');
+      }
+
+      // Salva dados do pedido localmente para usar no retorno
+      sessionStorage.setItem('nim_pending_order', JSON.stringify({
+        orderNum: data.orderNum,
+        customerName,
+        customerAddress,
+        total: cart.reduce((s, i) => s + i.priceRaw * i.qty, 0),
+        items: cart.slice()
+      }));
+
+      // Redireciona para o Checkout Pro do Mercado Pago
+      window.location.href = data.init_point;
+
+    } catch(err) {
+      showToast('❌ ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Pagar com Mercado Pago';
+    }
+  }
+
+  /* ── Detecta retorno do Mercado Pago pela URL ── */
+  (function detectMpReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('collection_status') || params.get('status');
+    if (!status) return;
+
+    const order = (() => {
+      try { return JSON.parse(sessionStorage.getItem('nim_pending_order') || '{}'); } catch(e) { return {}; }
+    })();
+
+    const modal     = document.getElementById('mpStatusModal');
+    const iconEl    = document.getElementById('mpModalIcon');
+    const titleEl   = document.getElementById('mpModalTitle');
+    const subEl     = document.getElementById('mpModalSub');
+
+    if (status === 'approved') {
+      iconEl.textContent  = '🎉';
+      titleEl.textContent = 'Pagamento aprovado!';
+      subEl.textContent   = `Pedido ${order.orderNum || ''} confirmado${order.customerName ? ' para ' + order.customerName : ''}. Em breve entraremos em contato!`;
+      modal.classList.add('open');
+
+      // Dispara também mensagem no WhatsApp
+      if (order.items && order.items.length && globalWppNumber) {
+        const wppNum = globalWppNumber.replace(/\D/g, '');
+        const total  = (order.total || 0).toFixed(2).replace('.', ',');
+        let msg = '🛍️ *PEDIDO PAGO – NIMARI*\n';
+        msg += '👤 Cliente: *' + (order.customerName || '') + '*\n';
+        msg += '📍 Endereço: ' + (order.customerAddress || '') + '\n';
+        msg += '🔖 Pedido: ' + (order.orderNum || '') + '\n\n';
+        msg += '*Itens:*\n';
+        (order.items || []).forEach(i => {
+          msg += '• ' + i.name + ' × ' + i.qty + '\n';
+        });
+        msg += '\n💰 *Total: R$ ' + total + '*\n';
+        msg += '\n✅ Pagamento confirmado pelo Mercado Pago!';
+        setTimeout(() => {
+          window.open('https://wa.me/' + wppNum + '?text=' + encodeURIComponent(msg), '_blank');
+        }, 1500);
+      }
+
+      sessionStorage.removeItem('nim_pending_order');
+      // Limpa a URL sem recarregar
+      history.replaceState({}, '', window.location.pathname);
+
+    } else if (status === 'rejected' || status === 'failure') {
+      iconEl.textContent  = '❌';
+      titleEl.textContent = 'Pagamento não aprovado';
+      subEl.textContent   = 'Seu pagamento foi recusado. Verifique os dados ou tente outro método de pagamento.';
+      modal.classList.add('open');
+      history.replaceState({}, '', window.location.pathname);
+
+    } else if (status === 'pending' || status === 'in_process') {
+      iconEl.textContent  = '⏳';
+      titleEl.textContent = 'Pagamento em análise';
+      subEl.textContent   = 'Seu pagamento está sendo processado. Você receberá a confirmação em breve.';
+      modal.classList.add('open');
+      history.replaceState({}, '', window.location.pathname);
+    }
+  })();
+
+  function closeMpModal() {
+    document.getElementById('mpStatusModal').classList.remove('open');
+  }
+
+</script>
+<script>
+  // ── CARROSSEL DE MARCAS
+  async function loadMarcas() {
+    try {
+      const res  = await fetch(API_URL + '/marcas');
+      const list = res.ok ? await res.json() : [];
+      const track = document.getElementById('brandsTrack');
+      if (!track || !list.length) return;
+      const items = [...list, ...list];
+      track.innerHTML = items.map(m => `
+        <div class="brand-item">
+          <img class="brand-logo" src="${m.logo_url}" alt="${m.nome}"
+               onerror="this.style.display='none'">
+          <span class="brand-name">${m.nome}</span>
+        </div>`).join('');
+    } catch(e) {}
+  }
+  loadMarcas();
+
+  async function loadAdminMarcas() {
+    try {
+      const res  = await fetch(API_URL + '/marcas');
+      const list = res.ok ? await res.json() : [];
+      const el   = document.getElementById('adminMarcasList');
+      if (!el) return;
+      el.innerHTML = list.map(m => `
+        <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.06);">
+          <img src="${m.logo_url}" style="width:40px;height:28px;object-fit:contain;filter:brightness(1.5);"
+               onerror="this.style.display='none'">
+          <span style="flex:1;font-size:.78rem;color:rgba(255,255,255,.7);">${m.nome}</span>
+          <button onclick="removerMarca(${m.id})"
+            style="background:transparent;border:none;color:rgba(220,80,80,.7);cursor:pointer;font-size:.8rem;">&#x1F5D1;</button>
+        </div>`).join('') || '<p style="font-size:.75rem;color:rgba(255,255,255,.3);">Nenhuma marca cadastrada.</p>';
+    } catch(e) {}
+  }
+
+  async function adicionarMarca() {
+    const nome    = document.getElementById('novaMarcaNome').value.trim();
+    const logoUrl = document.getElementById('novaMarcaLogo').value.trim();
+    if (!nome || !logoUrl) { showToast('Preencha nome e URL da logo.'); return; }
+    try {
+      const res = await fetch(API_URL + '/marcas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
+        body: JSON.stringify({ nome, logo_url: logoUrl })
+      });
+      if (res.ok) {
+        document.getElementById('novaMarcaNome').value = '';
+        document.getElementById('novaMarcaLogo').value = '';
+        showToast('Marca adicionada!');
+        loadAdminMarcas();
+        loadMarcas();
+      }
+    } catch(e) { showToast('Erro ao adicionar marca.'); }
+  }
+
+  async function removerMarca(id) {
+    if (!confirm('Remover esta marca do carrossel?')) return;
+    try {
+      await fetch(API_URL + '/marcas/' + id, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + adminToken }
+      });
+      showToast('Marca removida.');
+      loadAdminMarcas();
+      loadMarcas();
+    } catch(e) {}
+  }
+
+  document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+    if (btn.dataset.tab === 'config') {
+      btn.addEventListener('click', loadAdminMarcas);
+    }
+  });
+</script>
 </body></html>
