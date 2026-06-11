@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NIMARI – Cosméticos &amp; Moda Íntima</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIMARI – Cosméticos &amp; Moda Íntima</title>
 <link rel="icon" type="image/png" sizes="512x512" href="favicon.png">
 <link rel="icon" href="favicon.ico">
 <link rel="apple-touch-icon" href="favicon.png">
@@ -1490,48 +1493,7 @@
       transition: all .2s;
     }
     .cart-clear-btn:hover { border-color: #B85C5C; color: #B85C5C; }
-  
-    /* ── BOTÃO MERCADO PAGO ── */
-    .cart-mp-btn {
-      display: flex; align-items: center; justify-content: center; gap: .5rem;
-      width: 100%; padding: .85rem 1rem;
-      background: #009ee3;
-      color: #fff;
-      font-family: var(--ff-sans);
-      font-size: .78rem; font-weight: 600;
-      letter-spacing: .08em; text-transform: uppercase;
-      border: none; cursor: pointer;
-      transition: background .25s, transform .2s;
-      margin-bottom: .5rem;
-    }
-    .cart-mp-btn:hover { background: #007cbf; transform: translateY(-1px); }
-    .cart-mp-btn:disabled { background: #aaa; cursor: not-allowed; transform: none; }
-
-    /* ── MODAL PAGAMENTO ── */
-    #mpStatusModal {
-      display: none; position: fixed; inset: 0; z-index: 999;
-      background: rgba(45,45,45,.6); backdrop-filter: blur(6px);
-      align-items: center; justify-content: center;
-    }
-    #mpStatusModal.open { display: flex; }
-    .mp-modal-box {
-      background: var(--bg); max-width: 420px; width: 90%;
-      padding: 2.5rem 2rem; text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,.2);
-    }
-    .mp-modal-icon { font-size: 3rem; margin-bottom: 1rem; }
-    .mp-modal-title {
-      font-family: var(--ff-serif); font-size: 1.5rem;
-      color: var(--ink); margin-bottom: .5rem;
-    }
-    .mp-modal-sub { font-size: .9rem; color: var(--ink-lt); margin-bottom: 1.5rem; line-height: 1.6; }
-    .mp-modal-close {
-      background: var(--ink); color: #fff; border: none; cursor: pointer;
-      padding: .75rem 2rem; font-family: var(--ff-sans);
-      font-size: .78rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
-    }
-    .mp-modal-close:hover { background: var(--rose-deep); }
-</style>
+  </style>
 
   <link rel="canonical" href="https://www.nimari.com.br/">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1974,30 +1936,14 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
       <label class="cart-name-label" for="cartCustomerAddress">Seu Endereço *</label>
       <input class="cart-name-input" id="cartCustomerAddress" type="text" placeholder="Digite seu endereço completo" maxlength="120" autocomplete="street-address">
     </div>
-    <button class="cart-finalize-btn cart-mp-btn" id="cartMpBtn" onclick="checkoutMP()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-      Pagar com Mercado Pago
-    </button>
-    <p class="cart-finalize-note" style="margin-bottom:.5rem">PIX · Cartão · Boleto — processado pelo Mercado Pago</p>
-    <a class="cart-finalize-btn" id="cartFinalizeBtn" href="#" onclick="return finalizeOrder()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);font-size:.7rem;justify-content:center;gap:.4rem;display:flex;align-items:center;padding:.7rem 1rem;text-decoration:none;margin-top:.4rem;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg>
-      Ou enviar pedido pelo WhatsApp
+    <a class="cart-finalize-btn" id="cartFinalizeBtn" href="#" onclick="return finalizeOrder()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg>
+      Enviar Pedido pelo WhatsApp
     </a>
     <p class="cart-finalize-note">Você será redirecionado para o WhatsApp com o resumo do pedido.</p>
     <button class="cart-clear-btn" onclick="clearCart()">🗑️ Limpar carrinho</button>
   </div>
 </aside>
-
-
-<!-- ── MODAL STATUS PAGAMENTO MERCADO PAGO ── -->
-<div id="mpStatusModal">
-  <div class="mp-modal-box">
-    <div class="mp-modal-icon" id="mpModalIcon">🎉</div>
-    <h2 class="mp-modal-title" id="mpModalTitle">Pagamento aprovado!</h2>
-    <p class="mp-modal-sub" id="mpModalSub">Seu pedido foi confirmado. Em breve entraremos em contato.</p>
-    <button class="mp-modal-close" onclick="closeMpModal()">Fechar</button>
-  </div>
-</div>
 
 <!-- ── ADMIN FAB ── -->
 <button class="admin-fab" id="adminFab" aria-label="Painel Admin" title="Painel Administrativo">
@@ -2041,9 +1987,16 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
     <div class="admin-tab-content" id="tab-edit">
       <!-- Product list -->
       <div id="adminProdList" style="display: block;">
-        <p style="font-size:.72rem;color:rgba(255,255,255,.35);margin-bottom:1rem;letter-spacing:.05em;">
-          Clique num produto para editar suas informações:
-        </p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+          <p style="font-size:.72rem;color:rgba(255,255,255,.35);letter-spacing:.05em;">
+            Clique num produto para editar suas informações:
+          </p>
+          <a href="#" onclick="exportarProdutosXlsx(); return false;"
+             style="display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--gold);text-decoration:none;opacity:.85;transition:opacity .2s;white-space:nowrap;"
+             onmouseover="this.style.opacity=1" onmouseout="this.style.opacity='.85'">
+            📤 Exportar todos (.xlsx)
+          </a>
+        </div>
         <div class="admin-prod-list" id="adminProdListInner"><div class="admin-prod-item">
         <img class="admin-prod-thumb" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/24273488-troca-icone-simples-solido-estilo-mudar-duplo-marcha-re-seta-substituir-trocar-retornar-troca-conceito-preto-silhueta-glifo-simbol.jpg" alt="Refil Creme Acetinado Hidratante Desodorante Corporal Lily 250g (Refil)">
         <div class="admin-prod-info">
@@ -3362,6 +3315,43 @@ card.dataset.uid  = uid;
 
   const CSV_CAMPOS = ['nome','preco','descricao','preco_antigo','imagem_url','categoria','subcategoria','whatsapp','badge','mp_link'];
 
+  // Exporta todos os produtos cadastrados em .xlsx no mesmo formato do modelo
+  async function exportarProdutosXlsx() {
+    try {
+      showToast('⏳ Gerando arquivo...');
+      const res = await fetch(API_URL + '/produtos');
+      if (!res.ok) throw new Error('Erro ao buscar produtos');
+      const produtos = await res.json();
+
+      if (!produtos.length) { showToast('⚠️ Nenhum produto cadastrado.'); return; }
+
+      const linhas = [CSV_CAMPOS];
+      produtos.forEach(p => {
+        linhas.push([
+          p.name        || '',
+          p.price       != null ? String(p.price).replace('.', ',')     : '',
+          p.descricao   || '',
+          p.price_old   != null ? String(p.price_old).replace('.', ',') : '',
+          p.img         || '',
+          p.cat         || '',
+          p.sub         || '',
+          p.wpp         || '',
+          p.badge       || '',
+          p.mp_link     || '',
+        ]);
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(linhas);
+      ws['!cols'] = CSV_CAMPOS.map((_, i) => ({ wch: i === 0 ? 30 : i === 2 ? 35 : 18 }));
+      XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
+      XLSX.writeFile(wb, 'produtos_nimari.xlsx');
+      showToast('✅ Arquivo gerado com ' + produtos.length + ' produto(s)!');
+    } catch(e) {
+      showToast('❌ Erro ao exportar: ' + e.message);
+    }
+  }
+
   // Gera modelo .xlsx com SheetJS
   function downloadCsvTemplate() {
     const wb = XLSX.utils.book_new();
@@ -4482,218 +4472,5 @@ card.dataset.uid  = uid;
     }
   }
 </script>
-<script>
-  /* ════════════════════════════════════════════
-     CHECKOUT MERCADO PAGO
-  ════════════════════════════════════════════ */
-  async function checkoutMP() {
-    if (cart.length === 0) { showToast('⚠️ Carrinho vazio!'); return; }
 
-    const nameInput    = document.getElementById('cartCustomerName');
-    const addressInput = document.getElementById('cartCustomerAddress');
-    const customerName    = nameInput    ? nameInput.value.trim()    : '';
-    const customerAddress = addressInput ? addressInput.value.trim() : '';
-
-    if (!customerName) {
-      if (nameInput) { nameInput.classList.add('error'); nameInput.focus(); }
-      showToast('⚠️ Informe seu nome antes de pagar.');
-      return;
-    }
-    if (!customerAddress) {
-      if (addressInput) { addressInput.classList.add('error'); addressInput.focus(); }
-      showToast('⚠️ Informe seu endereço antes de pagar.');
-      return;
-    }
-    nameInput.classList.remove('error');
-    addressInput.classList.remove('error');
-
-    const btn = document.getElementById('cartMpBtn');
-    btn.disabled = true;
-    btn.textContent = '⏳ Gerando link de pagamento...';
-
-    try {
-      const payload = {
-        customerName,
-        customerAddress,
-        wppNumber: globalWppNumber || '',
-        items: cart.map(i => ({
-          uid:      i.uid,
-          name:     i.name,
-          desc:     i.desc || '',
-          img:      i.img  || '',
-          qty:      i.qty,
-          priceRaw: i.priceRaw,
-        }))
-      };
-
-      const res  = await fetch(API_URL + '/checkout', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload)
-      });
-      const data = await res.json();
-
-      if (!res.ok || !data.init_point) {
-        throw new Error(data.error || 'Não foi possível gerar o link de pagamento.');
-      }
-
-      // Salva dados do pedido localmente para usar no retorno
-      sessionStorage.setItem('nim_pending_order', JSON.stringify({
-        orderNum: data.orderNum,
-        customerName,
-        customerAddress,
-        total: cart.reduce((s, i) => s + i.priceRaw * i.qty, 0),
-        items: cart.slice()
-      }));
-
-      // Redireciona para o Checkout Pro do Mercado Pago
-      window.location.href = data.init_point;
-
-    } catch(err) {
-      showToast('❌ ' + err.message);
-      btn.disabled = false;
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Pagar com Mercado Pago';
-    }
-  }
-
-  /* ── Detecta retorno do Mercado Pago pela URL ── */
-  (function detectMpReturn() {
-    const params = new URLSearchParams(window.location.search);
-    const status = params.get('collection_status') || params.get('status');
-    if (!status) return;
-
-    const order = (() => {
-      try { return JSON.parse(sessionStorage.getItem('nim_pending_order') || '{}'); } catch(e) { return {}; }
-    })();
-
-    const modal     = document.getElementById('mpStatusModal');
-    const iconEl    = document.getElementById('mpModalIcon');
-    const titleEl   = document.getElementById('mpModalTitle');
-    const subEl     = document.getElementById('mpModalSub');
-
-    if (status === 'approved') {
-      iconEl.textContent  = '🎉';
-      titleEl.textContent = 'Pagamento aprovado!';
-      subEl.textContent   = `Pedido ${order.orderNum || ''} confirmado${order.customerName ? ' para ' + order.customerName : ''}. Em breve entraremos em contato!`;
-      modal.classList.add('open');
-
-      // Dispara também mensagem no WhatsApp
-      if (order.items && order.items.length && globalWppNumber) {
-        const wppNum = globalWppNumber.replace(/\D/g, '');
-        const total  = (order.total || 0).toFixed(2).replace('.', ',');
-        let msg = '🛍️ *PEDIDO PAGO – NIMARI*\n';
-        msg += '👤 Cliente: *' + (order.customerName || '') + '*\n';
-        msg += '📍 Endereço: ' + (order.customerAddress || '') + '\n';
-        msg += '🔖 Pedido: ' + (order.orderNum || '') + '\n\n';
-        msg += '*Itens:*\n';
-        (order.items || []).forEach(i => {
-          msg += '• ' + i.name + ' × ' + i.qty + '\n';
-        });
-        msg += '\n💰 *Total: R$ ' + total + '*\n';
-        msg += '\n✅ Pagamento confirmado pelo Mercado Pago!';
-        setTimeout(() => {
-          window.open('https://wa.me/' + wppNum + '?text=' + encodeURIComponent(msg), '_blank');
-        }, 1500);
-      }
-
-      sessionStorage.removeItem('nim_pending_order');
-      // Limpa a URL sem recarregar
-      history.replaceState({}, '', window.location.pathname);
-
-    } else if (status === 'rejected' || status === 'failure') {
-      iconEl.textContent  = '❌';
-      titleEl.textContent = 'Pagamento não aprovado';
-      subEl.textContent   = 'Seu pagamento foi recusado. Verifique os dados ou tente outro método de pagamento.';
-      modal.classList.add('open');
-      history.replaceState({}, '', window.location.pathname);
-
-    } else if (status === 'pending' || status === 'in_process') {
-      iconEl.textContent  = '⏳';
-      titleEl.textContent = 'Pagamento em análise';
-      subEl.textContent   = 'Seu pagamento está sendo processado. Você receberá a confirmação em breve.';
-      modal.classList.add('open');
-      history.replaceState({}, '', window.location.pathname);
-    }
-  })();
-
-  function closeMpModal() {
-    document.getElementById('mpStatusModal').classList.remove('open');
-  }
-
-</script>
-<script>
-  // ── CARROSSEL DE MARCAS
-  async function loadMarcas() {
-    try {
-      const res  = await fetch(API_URL + '/marcas');
-      const list = res.ok ? await res.json() : [];
-      const track = document.getElementById('brandsTrack');
-      if (!track || !list.length) return;
-      const items = [...list, ...list];
-      track.innerHTML = items.map(m => `
-        <div class="brand-item">
-          <img class="brand-logo" src="${m.logo_url}" alt="${m.nome}"
-               onerror="this.style.display='none'">
-          <span class="brand-name">${m.nome}</span>
-        </div>`).join('');
-    } catch(e) {}
-  }
-  loadMarcas();
-
-  async function loadAdminMarcas() {
-    try {
-      const res  = await fetch(API_URL + '/marcas');
-      const list = res.ok ? await res.json() : [];
-      const el   = document.getElementById('adminMarcasList');
-      if (!el) return;
-      el.innerHTML = list.map(m => `
-        <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.06);">
-          <img src="${m.logo_url}" style="width:40px;height:28px;object-fit:contain;filter:brightness(1.5);"
-               onerror="this.style.display='none'">
-          <span style="flex:1;font-size:.78rem;color:rgba(255,255,255,.7);">${m.nome}</span>
-          <button onclick="removerMarca(${m.id})"
-            style="background:transparent;border:none;color:rgba(220,80,80,.7);cursor:pointer;font-size:.8rem;">&#x1F5D1;</button>
-        </div>`).join('') || '<p style="font-size:.75rem;color:rgba(255,255,255,.3);">Nenhuma marca cadastrada.</p>';
-    } catch(e) {}
-  }
-
-  async function adicionarMarca() {
-    const nome    = document.getElementById('novaMarcaNome').value.trim();
-    const logoUrl = document.getElementById('novaMarcaLogo').value.trim();
-    if (!nome || !logoUrl) { showToast('Preencha nome e URL da logo.'); return; }
-    try {
-      const res = await fetch(API_URL + '/marcas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
-        body: JSON.stringify({ nome, logo_url: logoUrl })
-      });
-      if (res.ok) {
-        document.getElementById('novaMarcaNome').value = '';
-        document.getElementById('novaMarcaLogo').value = '';
-        showToast('Marca adicionada!');
-        loadAdminMarcas();
-        loadMarcas();
-      }
-    } catch(e) { showToast('Erro ao adicionar marca.'); }
-  }
-
-  async function removerMarca(id) {
-    if (!confirm('Remover esta marca do carrossel?')) return;
-    try {
-      await fetch(API_URL + '/marcas/' + id, {
-        method: 'DELETE',
-        headers: { 'Authorization': 'Bearer ' + adminToken }
-      });
-      showToast('Marca removida.');
-      loadAdminMarcas();
-      loadMarcas();
-    } catch(e) {}
-  }
-
-  document.querySelectorAll('.admin-tab-btn').forEach(btn => {
-    if (btn.dataset.tab === 'config') {
-      btn.addEventListener('click', loadAdminMarcas);
-    }
-  });
-</script>
 </body></html>
