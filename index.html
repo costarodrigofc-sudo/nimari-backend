@@ -500,6 +500,7 @@
     }
     .product-badge.novo { background: var(--rose-deep); }
     .product-badge.oferta { background: #B85C5C; }
+    .product-badge.esgotado { background: #555; }
 
     .product-img-wrap { overflow: hidden; position: relative; }
     .product-img {
@@ -616,6 +617,7 @@
     }
     .modal-badge.novo { background: var(--rose-deep); }
     .modal-badge.oferta { background: #B85C5C; }
+    .modal-badge.esgotado { background: #555; }
 
     .modal-content { padding: 2.5rem; display: flex; flex-direction: column; }
     .modal-close {
@@ -887,6 +889,7 @@
     .badge-opt[data-val="vendido"]:hover, .badge-opt[data-val="vendido"].sel { background: var(--gold); color: var(--white); border-color: var(--gold); }
     .badge-opt[data-val="novo"]:hover, .badge-opt[data-val="novo"].sel { background: var(--rose-deep); color: var(--white); border-color: var(--rose-deep); }
     .badge-opt[data-val="oferta"]:hover, .badge-opt[data-val="oferta"].sel { background: #B85C5C; color: var(--white); border-color: #B85C5C; }
+    .badge-opt[data-val="esgotado"]:hover, .badge-opt[data-val="esgotado"].sel { background: #555; color: var(--white); border-color: #555; }
 
     /* Action buttons */
     .admin-actions { display: flex; gap: 0.75rem; margin-top: 1.8rem; flex-wrap: wrap; }
@@ -2081,6 +2084,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
             <span class="badge-opt sel" data-val="vendido">⭐ Mais Vendido</span>
             <span class="badge-opt" data-val="novo">✨ Novo</span>
             <span class="badge-opt" data-val="oferta">🔥 Oferta</span>
+            <span class="badge-opt" data-val="esgotado">🚫 Esgotado</span>
           </div>
         </div>
 
@@ -2175,6 +2179,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
           <span class="badge-opt" data-val="vendido">⭐ Mais Vendido</span>
           <span class="badge-opt" data-val="novo">✨ Novo</span>
           <span class="badge-opt" data-val="oferta">🔥 Oferta</span>
+          <span class="badge-opt" data-val="esgotado">🚫 Esgotado</span>
         </div>
       </div>
 
