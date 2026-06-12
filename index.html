@@ -366,6 +366,14 @@
     .breadcrumb a:hover { text-decoration: underline; }
     .breadcrumb-sep { color: var(--rose-dark); }
 
+    /* ── ORDENAR POR ── */
+    .sort-bar { display:flex; align-items:center; gap:.6rem; margin-bottom:1.2rem; flex-wrap:wrap; }
+    .sort-label { font-family:var(--ff-sans); font-size:.7rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-lt); white-space:nowrap; }
+    .sort-select-wrap { position:relative; display:inline-flex; align-items:center; }
+    .sort-select { font-family:var(--ff-sans); font-size:.7rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; background:transparent; border:none; border-bottom:1.5px solid var(--ink-lt); color:var(--ink); cursor:pointer; padding:.25rem 1.4rem .25rem .4rem; outline:none; appearance:none; -webkit-appearance:none; }
+    .sort-select:focus { border-bottom-color:var(--rose-deep); }
+    .sort-chevron { position:absolute; right:.2rem; pointer-events:none; width:11px; height:11px; color:var(--ink-lt); }
+
     /* search bar */
     .catalog-search-wrap {
       display: flex; align-items: center; gap: 1rem;
@@ -500,7 +508,6 @@
     }
     .product-badge.novo { background: var(--rose-deep); }
     .product-badge.oferta { background: #B85C5C; }
-    .product-badge.esgotado { background: #555; }
 
     .product-img-wrap { overflow: hidden; position: relative; }
     .product-img {
@@ -617,7 +624,6 @@
     }
     .modal-badge.novo { background: var(--rose-deep); }
     .modal-badge.oferta { background: #B85C5C; }
-    .modal-badge.esgotado { background: #555; }
 
     .modal-content { padding: 2.5rem; display: flex; flex-direction: column; }
     .modal-close {
@@ -889,7 +895,6 @@
     .badge-opt[data-val="vendido"]:hover, .badge-opt[data-val="vendido"].sel { background: var(--gold); color: var(--white); border-color: var(--gold); }
     .badge-opt[data-val="novo"]:hover, .badge-opt[data-val="novo"].sel { background: var(--rose-deep); color: var(--white); border-color: var(--rose-deep); }
     .badge-opt[data-val="oferta"]:hover, .badge-opt[data-val="oferta"].sel { background: #B85C5C; color: var(--white); border-color: #B85C5C; }
-    .badge-opt[data-val="esgotado"]:hover, .badge-opt[data-val="esgotado"].sel { background: #555; color: var(--white); border-color: #555; }
 
     /* Action buttons */
     .admin-actions { display: flex; gap: 0.75rem; margin-top: 1.8rem; flex-wrap: wrap; }
@@ -1612,6 +1617,27 @@
       <span class="catalog-result-count" id="resultCount">produtos</span>
     </div>
 
+    <!-- Ordenar Por -->
+    <div class="sort-bar">
+      <span class="sort-label">Ordenar Por</span>
+      <div class="sort-select-wrap">
+        <select class="sort-select" id="sortSelect" onchange="applySortAndFilter()">
+          <option value="relevancia">RELEVÂNCIA</option>
+          <option value="novo">✨ NOVO</option>
+          <option value="oferta">🔥 OFERTA</option>
+          <option value="vendido">⭐ MAIS VENDIDO</option>
+          <option value="esgotado">🚫 ESGOTADO</option>
+          <option value="preco_menor">💰 MENOR PREÇO</option>
+          <option value="preco_maior">💎 MAIOR PREÇO</option>
+          <option value="desconto">🏷️ MAIOR DESCONTO</option>
+          <option value="mais_recentes">🆕 MAIS RECENTES</option>
+          <option value="nome_asc">A → Z</option>
+          <option value="nome_desc">Z → A</option>
+        </select>
+        <svg class="sort-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+
     <!-- Layout -->
     <div class="catalog-layout">
 
@@ -1990,16 +2016,9 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
     <div class="admin-tab-content" id="tab-edit">
       <!-- Product list -->
       <div id="adminProdList" style="display: block;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-          <p style="font-size:.72rem;color:rgba(255,255,255,.35);letter-spacing:.05em;">
-            Clique num produto para editar suas informações:
-          </p>
-          <a href="#" onclick="exportarProdutosXlsx(); return false;"
-             style="display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--gold);text-decoration:none;opacity:.85;transition:opacity .2s;white-space:nowrap;"
-             onmouseover="this.style.opacity=1" onmouseout="this.style.opacity='.85'">
-            📤 Exportar todos (.xlsx)
-          </a>
-        </div>
+        <p style="font-size:.72rem;color:rgba(255,255,255,.35);margin-bottom:1rem;letter-spacing:.05em;">
+          Clique num produto para editar suas informações:
+        </p>
         <div class="admin-prod-list" id="adminProdListInner"><div class="admin-prod-item">
         <img class="admin-prod-thumb" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/24273488-troca-icone-simples-solido-estilo-mudar-duplo-marcha-re-seta-substituir-trocar-retornar-troca-conceito-preto-silhueta-glifo-simbol.jpg" alt="Refil Creme Acetinado Hidratante Desodorante Corporal Lily 250g (Refil)">
         <div class="admin-prod-info">
@@ -2084,7 +2103,6 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
             <span class="badge-opt sel" data-val="vendido">⭐ Mais Vendido</span>
             <span class="badge-opt" data-val="novo">✨ Novo</span>
             <span class="badge-opt" data-val="oferta">🔥 Oferta</span>
-            <span class="badge-opt" data-val="esgotado">🚫 Esgotado</span>
           </div>
         </div>
 
@@ -2179,7 +2197,6 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
           <span class="badge-opt" data-val="vendido">⭐ Mais Vendido</span>
           <span class="badge-opt" data-val="novo">✨ Novo</span>
           <span class="badge-opt" data-val="oferta">🔥 Oferta</span>
-          <span class="badge-opt" data-val="esgotado">🚫 Esgotado</span>
         </div>
       </div>
 
@@ -2447,18 +2464,65 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
       const grpBtn = document.getElementById('grp-' + group);
       if (grpBtn) grpBtn.classList.add('active');
     }
-    applyFilter();
+    applySortAndFilter();
     document.getElementById('colecao').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function filterProducts() {
     searchQuery = document.getElementById('catalogSearch').value.toLowerCase().trim();
-    applyFilter();
+    applySortAndFilter();
   }
 
   function applyFilter() {
     _visibleCount = 9;
     _renderVisible();
+  }
+
+  function applySortAndFilter() {
+    const sort = document.getElementById('sortSelect')?.value || 'relevancia';
+    const grid = document.getElementById('productsGrid');
+    if (!grid) { applyFilter(); return; }
+
+    const cards = Array.from(grid.querySelectorAll('.product-card'));
+
+    cards.sort((a, b) => {
+      const priceA = parseFloat(a.dataset.price)    || 0;
+      const priceB = parseFloat(b.dataset.price)    || 0;
+      const oldA   = parseFloat(a.dataset.priceOld) || 0;
+      const oldB   = parseFloat(b.dataset.priceOld) || 0;
+      const nameA  = (a.dataset.name  || '').toLowerCase();
+      const nameB  = (b.dataset.name  || '').toLowerCase();
+      const idxA   = parseInt(a.dataset.idx) || 0;
+      const idxB   = parseInt(b.dataset.idx) || 0;
+      const badgeA = a.dataset.badge || 'none';
+      const badgeB = b.dataset.badge || 'none';
+
+      // Para badges: produto com a badge selecionada vem primeiro
+      const BADGE_SORTS = ['novo','oferta','vendido','esgotado'];
+      if (BADGE_SORTS.includes(sort)) {
+        const aHas = badgeA === sort ? -1 : 1;
+        const bHas = badgeB === sort ?  1 : -1;
+        if (badgeA === sort && badgeB !== sort) return -1;
+        if (badgeB === sort && badgeA !== sort) return  1;
+        return idxA - idxB;
+      }
+
+      switch(sort) {
+        case 'preco_menor':   return priceA - priceB;
+        case 'preco_maior':   return priceB - priceA;
+        case 'nome_asc':      return nameA.localeCompare(nameB, 'pt-BR');
+        case 'nome_desc':     return nameB.localeCompare(nameA, 'pt-BR');
+        case 'mais_recentes': return idxB - idxA;
+        case 'desconto':
+          const descA = oldA > priceA ? oldA - priceA : 0;
+          const descB = oldB > priceB ? oldB - priceB : 0;
+          return descB - descA;
+        default: return idxA - idxB; // relevancia
+      }
+    });
+
+    cards.forEach(c => grid.appendChild(c));
+    applyFilter();
   }
 
   function loadMore() {
@@ -2690,7 +2754,10 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     if (p.price)    card.querySelector('.product-price').textContent = 'R$ ' + p.price;
     // cat / sub
     if (p.mp_link !== undefined) card.dataset.mp = p.mp_link || '';
-    if (p.cat) card.dataset.cat = p.cat;
+    if (p.cat)   card.dataset.cat   = p.cat;
+    if (p.badge !== undefined) card.dataset.badge = p.badge || 'none';
+    if (p.price !== undefined) card.dataset.price = String(p.price || '0').replace(',','.');
+    if (p.price_old !== undefined) card.dataset.priceOld = String(p.price_old || '0').replace(',','.');
     if (p.sub) {
       card.dataset.sub = p.sub;
       const catTagEl = card.querySelector('.product-category-tag');
@@ -3233,7 +3300,11 @@ card.dataset.uid  = uid;
     card.dataset.name = p.name || 'Novo Produto';
     card.dataset.isnew = '1';
     card.dataset.wpp   = ((p.wpp || WPP_DEFAULT).replace(/\D/g,'')) || WPP_DEFAULT;
-    card.dataset.mp    = p.mp_link || p.mp || '';
+    card.dataset.mp       = p.mp_link || p.mp || '';
+    card.dataset.price    = String(p.price    || '0').replace(',','.');
+    card.dataset.priceOld = String(p.priceOld || '0').replace(',','.');
+    card.dataset.badge    = p.badge || 'none';
+    card.dataset.idx      = grid ? grid.querySelectorAll('.product-card').length : 0;
 
     const imgSrc = p.img || 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg';
     const catLabel = subLabels[p.sub] || p.cat || '';
@@ -3242,7 +3313,8 @@ card.dataset.uid  = uid;
     let badgeHtml = '';
     if (p.badge === 'vendido') badgeHtml = '<span class="product-badge">Mais Vendido</span>';
     if (p.badge === 'novo')    badgeHtml = '<span class="product-badge novo">Novo</span>';
-    if (p.badge === 'oferta')  badgeHtml = '<span class="product-badge oferta">Oferta</span>';
+    if (p.badge === 'oferta')   badgeHtml = '<span class="product-badge oferta">Oferta</span>';
+    if (p.badge === 'esgotado') badgeHtml = '<span class="product-badge esgotado">Esgotado</span>';
 
     card.innerHTML = `
       ${badgeHtml}
@@ -3319,43 +3391,6 @@ card.dataset.uid  = uid;
   let csvProdutosParsed = [];
 
   const CSV_CAMPOS = ['nome','preco','descricao','preco_antigo','imagem_url','categoria','subcategoria','whatsapp','badge','mp_link'];
-
-  // Exporta todos os produtos cadastrados em .xlsx no mesmo formato do modelo
-  async function exportarProdutosXlsx() {
-    try {
-      showToast('⏳ Gerando arquivo...');
-      const res = await fetch(API_URL + '/produtos');
-      if (!res.ok) throw new Error('Erro ao buscar produtos');
-      const produtos = await res.json();
-
-      if (!produtos.length) { showToast('⚠️ Nenhum produto cadastrado.'); return; }
-
-      const linhas = [CSV_CAMPOS];
-      produtos.forEach(p => {
-        linhas.push([
-          p.name        || '',
-          p.price       != null ? String(p.price).replace('.', ',')     : '',
-          p.descricao   || '',
-          p.price_old   != null ? String(p.price_old).replace('.', ',') : '',
-          p.img         || '',
-          p.cat         || '',
-          p.sub         || '',
-          p.wpp         || '',
-          p.badge       || '',
-          p.mp_link     || '',
-        ]);
-      });
-
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(linhas);
-      ws['!cols'] = CSV_CAMPOS.map((_, i) => ({ wch: i === 0 ? 30 : i === 2 ? 35 : 18 }));
-      XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
-      XLSX.writeFile(wb, 'produtos_nimari.xlsx');
-      showToast('✅ Arquivo gerado com ' + produtos.length + ' produto(s)!');
-    } catch(e) {
-      showToast('❌ Erro ao exportar: ' + e.message);
-    }
-  }
 
   // Gera modelo .xlsx com SheetJS
   function downloadCsvTemplate() {
