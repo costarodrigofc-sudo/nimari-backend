@@ -2373,7 +2373,16 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
         <div id="catVisibilityList"></div>
         <p style="font-size:.68rem;color:rgba(255,255,255,.2);margin-top:.8rem;">As alterações são salvas automaticamente ao clicar no toggle.</p>
       </div>
-    </div>
+      <!-- ── MARCAS ── -->
+<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,.08);">
+  <label class="admin-label" style="margin-bottom:.8rem;">🏷️ Marcas do Carrossel</label>
+  <div id="adminMarcasList" style="margin-bottom:1rem;"></div>
+  <div style="display:flex;flex-direction:column;gap:.5rem;">
+    <input class="admin-inp" id="novaMarcaNome" placeholder="Nome da marca">
+    <input class="admin-inp" id="novaMarcaLogo" type="url" placeholder="URL da logo (Supabase)">
+    <button class="admin-save-btn" onclick="adicionarMarca()" style="width:100%;">➕ Adicionar Marca</button>
+  </div>
+</div>
     <button onclick="excluirTodosProdutos()"
       style="display:block;width:calc(100% - 3.6rem);margin:0 1.8rem .6rem;padding:.75rem 1rem;
              background:transparent;border:1px solid rgba(220,80,80,.35);color:rgba(220,80,80,.7);
@@ -2384,16 +2393,6 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
       🗑️ Excluir todos os produtos
     </button>
     <button class="admin-logout-btn" onclick="adminLogout()">🚪 Sair do painel</button>
-     <!-- ── MARCAS ── -->
-<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,.08);">
-  <label class="admin-label" style="margin-bottom:.8rem;">🏷️ Marcas do Carrossel</label>
-  <div id="adminMarcasList" style="margin-bottom:1rem;"></div>
-  <div style="display:flex;flex-direction:column;gap:.5rem;">
-    <input class="admin-inp" id="novaMarcaNome" placeholder="Nome da marca">
-    <input class="admin-inp" id="novaMarcaLogo" type="url" placeholder="URL da logo (Supabase)">
-    <button class="admin-save-btn" onclick="adicionarMarca()" style="width:100%;">➕ Adicionar Marca</button>
-  </div>
-</div>
 <!-- ── TOAST ── -->
 <div class="admin-toast" id="adminToast">✅ Produto atualizado com sucesso!</div>
 </div>
