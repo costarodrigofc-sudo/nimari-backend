@@ -1588,7 +1588,18 @@
     </div>
     <div class="brands-carousel-wrap">
   <div class="brands-track" id="brandsTrack">
-    <!-- populado via JS -->
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/O%20Boticario%20Logo.png" alt="O Boticário" onerror="this.style.display='none'"><span class="brand-name">O Boticário</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Natura%20Logo.png" alt="Natura" onerror="this.style.display='none'"><span class="brand-name">Natura</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Marbelle%20Logo.png" alt="Marbelle" onerror="this.style.display='none'"><span class="brand-name">Marbelle</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Diamantes%20Logo.png" alt="Diamantes Lingerie" onerror="this.style.display='none'"><span class="brand-name">Diamantes Lingerie</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Eudora%20Logo.png" alt="Eudora" onerror="this.style.display='none'"><span class="brand-name">Eudora</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/NIMARI%20(1).png" alt="NIMARI" onerror="this.style.display='none'"><span class="brand-name">NIMARI</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/O%20Boticario%20Logo.png" alt="O Boticário" onerror="this.style.display='none'"><span class="brand-name">O Boticário</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Natura%20Logo.png" alt="Natura" onerror="this.style.display='none'"><span class="brand-name">Natura</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Marbelle%20Logo.png" alt="Marbelle" onerror="this.style.display='none'"><span class="brand-name">Marbelle</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Diamantes%20Logo.png" alt="Diamantes Lingerie" onerror="this.style.display='none'"><span class="brand-name">Diamantes Lingerie</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Eudora%20Logo.png" alt="Eudora" onerror="this.style.display='none'"><span class="brand-name">Eudora</span></div>
+    <div class="brand-item"><img class="brand-logo" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/NIMARI%20(1).png" alt="NIMARI" onerror="this.style.display='none'"><span class="brand-name">NIMARI</span></div>
   </div>
 </div>
   </div>
@@ -2619,9 +2630,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
   }
 
 async function loadMarcas() {
-  // 1. Mostra fallback imediatamente — sem depender da API
-  renderMarcasTrack(MARCAS_FALLBACK);
-  // 2. Tenta buscar do banco; se vier dados, substitui o fallback
+  // As marcas base já estão no HTML — só substitui se o banco tiver dados cadastrados
   try {
     const res = await fetchWithRetry(API_URL + '/marcas');
     if (!res.ok) return;
