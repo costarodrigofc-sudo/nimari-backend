@@ -30,8 +30,7 @@
   <meta property="og:description" content="Realce sua beleza com elegância e conforto. Conheça a coleção NIMARI.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.nimari.com.br/">
-  <meta property="og:image" content=" https://drive.google.com/thumbnail?id=19QrEuqmPRIw17jWQJcHKj_QzJdEO3IYn&sz=w1000
-">
+  <meta property="og:image" content="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com/">
@@ -1562,8 +1561,7 @@
     </div>
   </div>
   <div class="hero-image">
-    <img src=" https://drive.google.com/thumbnail?id=19QrEuqmPRIw17jWQJcHKj_QzJdEO3IYn&sz=w1000
-" alt="Cosméticos NIMARI" loading="eager">
+    <img src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg" alt="Cosméticos NIMARI" loading="eager">
     <!-- <div class="hero-badge reveal delay-4 visible">
       <div class="hero-badge-num">50+</div>
       <div class="hero-badge-text">Mulheres transformadas</div>
@@ -2700,7 +2698,7 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
   ════════════════════════════════════════════ */
   const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:3001/api'
-    : 'https://nimari-backend.onrender.com/api';
+    : 'https://nimari-backend-production.up.railway.app/api';
 
   // Carrega número do WhatsApp da API
   fetch(API_URL + '/config/wpp_number')
@@ -3099,8 +3097,7 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
       const item  = document.createElement('div');
       item.className = 'admin-prod-item';
       item.innerHTML = `
-        <img class="admin-prod-thumb" src="${img}" alt="${name}" onerror="this.src=' https://drive.google.com/thumbnail?id=19QrEuqmPRIw17jWQJcHKj_QzJdEO3IYn&sz=w1000
-'" />
+        <img class="admin-prod-thumb" src="${img}" alt="${name}" onerror="this.src='https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg'" />
         <div class="admin-prod-info">
           <p class="admin-prod-item-name">${name}</p>
           <p class="admin-prod-item-cat">${cat}</p>
@@ -3320,8 +3317,7 @@ card.dataset.uid  = uid;
     card.dataset.badge    = p.badge || 'none';
     card.dataset.idx      = grid ? grid.querySelectorAll('.product-card').length : 0;
 
-    const imgSrc = p.img || ' https://drive.google.com/thumbnail?id=19QrEuqmPRIw17jWQJcHKj_QzJdEO3IYn&sz=w1000
-';
+    const imgSrc = p.img || 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg';
     const catLabel = subLabels[p.sub] || p.cat || '';
     const wppNum = (p.wpp||WPP_DEFAULT).replace(/\D/g,'');
     const priceOldHtml = p.priceOld ? `<span class="product-price-old">R$ ${p.priceOld}</span>` : '';
@@ -3334,8 +3330,7 @@ card.dataset.uid  = uid;
     card.innerHTML = `
       ${badgeHtml}
       <div class="product-img-wrap">
-        <img class="product-img" src="${imgSrc}" alt="${sanitizeHTML(p.name)}" loading="lazy" onerror="this.src=' https://drive.google.com/thumbnail?id=19QrEuqmPRIw17jWQJcHKj_QzJdEO3IYn&sz=w1000
-'"/>
+        <img class="product-img" src="${imgSrc}" alt="${sanitizeHTML(p.name)}" loading="lazy" onerror="this.src='https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg'"/>
         <div class="product-overlay"><button class="product-overlay-btn">Ver Detalhes</button></div>
       </div>
       <div class="product-info">
