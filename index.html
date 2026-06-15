@@ -2630,21 +2630,14 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
   }
 
 async function loadMarcas() {
-  // As marcas base já estão no HTML — só substitui se o banco tiver dados cadastrados
+  // Chamada apenas pelo painel admin após adicionar/remover marcas.
+  // No carregamento da página as marcas já estão no HTML — sem depender de API.
   try {
-    const res = await fetchWithRetry(API_URL + '/marcas');
-    console.log('[NIMARI marcas] status:', res.status);
-    if (!res.ok) { console.log('[NIMARI marcas] resposta não-ok, mantendo HTML'); return; }
+    const res = await fetch(API_URL + '/marcas');
+    if (!res.ok) return;
     const list = await res.json();
-    console.log('[NIMARI marcas] lista recebida:', list);
-    if (Array.isArray(list) && list.length > 0) {
-      renderMarcasTrack(list);
-    } else {
-      console.log('[NIMARI marcas] lista vazia ou inválida — mantendo HTML hardcoded');
-    }
-  } catch(e) {
-    console.log('[NIMARI marcas] erro na requisição:', e);
-  }
+    if (Array.isArray(list) && list.length > 0) renderMarcasTrack(list);
+  } catch(e) {}
 }
 // ── ADMIN MARCAS
 async function loadAdminMarcas() {
@@ -3825,7 +3818,8 @@ card.dataset.uid  = uid;
   assignUIDs();
   addEditButtons();
   loadSavedProducts();
-  loadMarcas(); // ← movido aqui: API_URL já está definido
+  // loadMarcas() não é chamado no init — marcas estão no HTML hardcoded.
+  // Só é chamado pelo painel admin após adicionar/remover marcas.
   // Aplica visibilidade na carga da página (antes do painel abrir)
   (async () => {
     try {
