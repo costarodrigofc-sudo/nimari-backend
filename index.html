@@ -229,7 +229,7 @@
       overflow: hidden;
     }
     .hero-image img {
-      width: 90%; height: 90%;
+      width: 80%; height: 80%;
       object-fit: cover;
       transform: scale(1.05);
       transition: transform 5s ease;
@@ -1561,7 +1561,7 @@
     </div>
   </div>
   <div class="hero-image">
-    <img src=" https://drive.google.com/thumbnail?id=1uGqk3jMU0XrrIryVgVAcUv701MZryasa&sz=w1000" alt="Cosméticos NIMARI" loading="eager">
+    <img src=" https://drive.google.com/thumbnail?id=19QrEuqmPRIw17jWQJcHKj_QzJdEO3IYn&sz=w1000" alt="Cosméticos NIMARI" loading="eager">
     <!-- <div class="hero-badge reveal delay-4 visible">
       <div class="hero-badge-num">50+</div>
       <div class="hero-badge-text">Mulheres transformadas</div>
@@ -2596,13 +2596,19 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
   }
 
   // ── CARROSSEL DE MARCAS ───────────────────────────────────────────────────
-async function loadMarcas() {
-  try {
-    const res  = await fetchWithRetry(API_URL + '/marcas');
-    const list = res.ok ? await res.json() : [];
+  // Fallback hardcoded — exibido imediatamente, substituído pelos dados do banco se houver
+  const MARCAS_FALLBACK = [
+    { nome: 'O Boticário',        logo_url: 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/O%20Boticario%20Logo.png' },
+    { nome: 'Natura',             logo_url: 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Natura%20Logo.png' },
+    { nome: 'Marbelle',           logo_url: 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Marbelle%20Logo.png' },
+    { nome: 'Diamantes Lingerie', logo_url: 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Diamantes%20Logo.png' },
+    { nome: 'Eudora',             logo_url: 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/Eudora%20Logo.png' },
+    { nome: 'NIMARI',             logo_url: 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Marcas/NIMARI%20(1).png' },
+  ];
+
+  function renderMarcasTrack(list) {
     const track = document.getElementById('brandsTrack');
     if (!track || !list.length) return;
-    // Duplica para loop infinito
     const items = [...list, ...list];
     track.innerHTML = items.map(m => `
       <div class="brand-item">
@@ -2610,10 +2616,19 @@ async function loadMarcas() {
              onerror="this.style.display='none'">
         <span class="brand-name">${m.nome}</span>
       </div>`).join('');
+  }
+
+async function loadMarcas() {
+  // 1. Mostra fallback imediatamente — sem depender da API
+  renderMarcasTrack(MARCAS_FALLBACK);
+  // 2. Tenta buscar do banco; se vier dados, substitui o fallback
+  try {
+    const res = await fetchWithRetry(API_URL + '/marcas');
+    if (!res.ok) return;
+    const list = await res.json();
+    if (list && list.length > 0) renderMarcasTrack(list);
   } catch(e) {}
 }
-// ⚠️ NÃO chamar loadMarcas() aqui — API_URL ainda não foi definido.
-// A chamada foi movida para após a definição de API_URL (junto com loadSavedProducts).
 // ── ADMIN MARCAS
 async function loadAdminMarcas() {
   try {
