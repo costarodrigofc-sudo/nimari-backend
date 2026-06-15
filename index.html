@@ -2019,9 +2019,16 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
     <div class="admin-tab-content" id="tab-edit">
       <!-- Product list -->
       <div id="adminProdList" style="display: block;">
-        <p style="font-size:.72rem;color:rgba(255,255,255,.35);margin-bottom:1rem;letter-spacing:.05em;">
-          Clique num produto para editar suas informações:
-        </p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+          <p style="font-size:.72rem;color:rgba(255,255,255,.35);letter-spacing:.05em;">
+            Clique num produto para editar suas informações:
+          </p>
+          <a href="#" onclick="exportarProdutosXlsx(); return false;"
+             style="display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--gold);text-decoration:none;opacity:.85;transition:opacity .2s;white-space:nowrap;"
+             onmouseover="this.style.opacity=1" onmouseout="this.style.opacity='.85'">
+            📤 Exportar todos (.xlsx)
+          </a>
+        </div>
         <div class="admin-prod-list" id="adminProdListInner"><div class="admin-prod-item">
         <img class="admin-prod-thumb" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/24273488-troca-icone-simples-solido-estilo-mudar-duplo-marcha-re-seta-substituir-trocar-retornar-troca-conceito-preto-silhueta-glifo-simbol.jpg" alt="Refil Creme Acetinado Hidratante Desodorante Corporal Lily 250g (Refil)">
         <div class="admin-prod-info">
@@ -2383,6 +2390,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
     <button class="admin-save-btn" onclick="adicionarMarca()" style="width:100%;">➕ Adicionar Marca</button>
   </div>
 </div>
+    </div>
     <button onclick="excluirTodosProdutos()"
       style="display:block;width:calc(100% - 3.6rem);margin:0 1.8rem .6rem;padding:.75rem 1rem;
              background:transparent;border:1px solid rgba(220,80,80,.35);color:rgba(220,80,80,.7);
@@ -3394,6 +3402,38 @@ card.dataset.uid  = uid;
   let csvProdutosParsed = [];
 
   const CSV_CAMPOS = ['nome','preco','descricao','preco_antigo','imagem_url','categoria','subcategoria','whatsapp','badge','mp_link'];
+
+  // Exporta todos os produtos cadastrados em .xlsx
+  async function exportarProdutosXlsx() {
+    try {
+      showToast('⏳ Gerando arquivo...');
+      const res = await fetch(API_URL + '/produtos');
+      if (!res.ok) throw new Error('Erro ao buscar produtos');
+      const produtos = await res.json();
+      if (!produtos.length) { showToast('⚠️ Nenhum produto cadastrado.'); return; }
+      const linhas = [CSV_CAMPOS];
+      produtos.forEach(p => {
+        linhas.push([
+          p.name      || '',
+          p.price     != null ? String(p.price).replace('.',',')     : '',
+          p.descricao || '',
+          p.price_old != null ? String(p.price_old).replace('.',',') : '',
+          p.img       || '',
+          p.cat       || '',
+          p.sub       || '',
+          p.wpp       || '',
+          p.badge     || '',
+          p.mp_link   || '',
+        ]);
+      });
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(linhas);
+      ws['!cols'] = CSV_CAMPOS.map((_,i) => ({ wch: i===0?30:i===2?35:18 }));
+      XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
+      XLSX.writeFile(wb, 'produtos_nimari.xlsx');
+      showToast('✅ ' + produtos.length + ' produto(s) exportado(s)!');
+    } catch(e) { showToast('❌ Erro: ' + e.message); }
+  }
 
   // Gera modelo .xlsx com SheetJS
   function downloadCsvTemplate() {
