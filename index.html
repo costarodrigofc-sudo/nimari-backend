@@ -2633,10 +2633,18 @@ async function loadMarcas() {
   // As marcas base já estão no HTML — só substitui se o banco tiver dados cadastrados
   try {
     const res = await fetchWithRetry(API_URL + '/marcas');
-    if (!res.ok) return;
+    console.log('[NIMARI marcas] status:', res.status);
+    if (!res.ok) { console.log('[NIMARI marcas] resposta não-ok, mantendo HTML'); return; }
     const list = await res.json();
-    if (list && list.length > 0) renderMarcasTrack(list);
-  } catch(e) {}
+    console.log('[NIMARI marcas] lista recebida:', list);
+    if (Array.isArray(list) && list.length > 0) {
+      renderMarcasTrack(list);
+    } else {
+      console.log('[NIMARI marcas] lista vazia ou inválida — mantendo HTML hardcoded');
+    }
+  } catch(e) {
+    console.log('[NIMARI marcas] erro na requisição:', e);
+  }
 }
 // ── ADMIN MARCAS
 async function loadAdminMarcas() {
