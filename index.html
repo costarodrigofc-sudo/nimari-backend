@@ -2572,10 +2572,33 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
   
   // init counts após carregar produtos
   // applyFilter() será chamado após loadSavedProducts()
-  // ── CARROSSEL DE MARCAS
+
+  // ── RETRY HELPER (wake up Render free tier) ──────────────────────────────
+  // Tenta até `attempts` vezes com backoff exponencial.
+  // Útil quando o servidor está hibernado e a primeira requisição demora ou falha.
+  async function fetchWithRetry(url, options, { attempts = 4, baseDelay = 2000 } = {}) {
+    let lastErr;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const res = await fetch(url, options);
+        if (res.ok) return res;
+        // Status 5xx → pode ser servidor acordando; 4xx → não tenta de novo
+        if (res.status < 500) return res;
+        lastErr = new Error('HTTP ' + res.status);
+      } catch (err) {
+        lastErr = err;
+      }
+      if (i < attempts - 1) {
+        await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
+      }
+    }
+    throw lastErr;
+  }
+
+  // ── CARROSSEL DE MARCAS ───────────────────────────────────────────────────
 async function loadMarcas() {
   try {
-    const res  = await fetch(API_URL + '/marcas');
+    const res  = await fetchWithRetry(API_URL + '/marcas');
     const list = res.ok ? await res.json() : [];
     const track = document.getElementById('brandsTrack');
     if (!track || !list.length) return;
@@ -2739,7 +2762,7 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
   // ── Load saved product data from API
   async function loadSavedProducts() {
     try {
-      const res = await fetch(API_URL + '/produtos');
+      const res = await fetchWithRetry(API_URL + '/produtos');
       if (!res.ok) return;
       const data = await res.json();
       // Limpa cards existentes antes de renderizar para evitar duplicatas
@@ -4496,7 +4519,7 @@ card.dataset.uid  = uid;
   // ── LOAD saved depos on page init
   (async function() {
     try {
-      const res = await fetch(API_URL + '/depoimentos');
+      const res = await fetchWithRetry(API_URL + '/depoimentos');
       if (!res.ok) return;
       const data = await res.json();
       if (data && data.length > 0) {
