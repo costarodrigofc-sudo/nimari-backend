@@ -2612,7 +2612,8 @@ async function loadMarcas() {
       </div>`).join('');
   } catch(e) {}
 }
-loadMarcas();
+// ⚠️ NÃO chamar loadMarcas() aqui — API_URL ainda não foi definido.
+// A chamada foi movida para após a definição de API_URL (junto com loadSavedProducts).
 // ── ADMIN MARCAS
 async function loadAdminMarcas() {
   try {
@@ -3792,6 +3793,7 @@ card.dataset.uid  = uid;
   assignUIDs();
   addEditButtons();
   loadSavedProducts();
+  loadMarcas(); // ← movido aqui: API_URL já está definido
   // Aplica visibilidade na carga da página (antes do painel abrir)
   (async () => {
     try {
