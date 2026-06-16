@@ -616,6 +616,29 @@
       width: 100%; height: 100%; min-height: 320px;
       object-fit: cover; display: block;
     }
+    .modal-thumbs {
+      display: flex; gap: 6px; padding: 8px 12px;
+      background: rgba(0,0,0,0.03); overflow-x: auto;
+      scrollbar-width: thin;
+    }
+    .modal-thumb {
+      width: 60px; height: 60px; flex-shrink: 0;
+      object-fit: cover; cursor: pointer;
+      border: 2px solid transparent; border-radius: 4px;
+      transition: border-color .2s, opacity .2s; opacity: .7;
+    }
+    .modal-thumb.active, .modal-thumb:hover { border-color: var(--gold); opacity: 1; }
+    .modal-thumb-wrap { display: none; }
+    .modal-thumb-wrap.has-thumbs { display: flex; }
+    /* admin galeria extra */
+    .extra-imgs-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .extra-img-row {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.05); border-radius: 6px; padding: 4px 8px;
+    }
+    .extra-img-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+    .extra-img-url { flex: 1; font-size: 11px; color: var(--ink-lt); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .extra-img-del { background: none; border: none; cursor: pointer; color: #c44; font-size: 18px; line-height: 1; padding: 0 4px; }
     .modal-badge {
       position: absolute; top: 1rem; left: 0;
       background: var(--gold); color: var(--white);
@@ -1766,6 +1789,9 @@
       <img class="modal-img" id="modalImg" src="https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/24273488-troca-icone-simples-solido-estilo-mudar-duplo-marcha-re-seta-substituir-trocar-retornar-troca-conceito-preto-silhueta-glifo-simbol.jpg" alt="Loção Desodorante Hidratante Cuide-se Bem Feira Banana 400ml">
       <span class="modal-badge novo" id="modalBadge" style="display: block;">Novo</span>
     </div>
+    <div class="modal-thumb-wrap" id="modalThumbWrap">
+      <div class="modal-thumbs" id="modalThumbs"></div>
+    </div>
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal()" aria-label="Fechar">✕</button>
       <p class="modal-category" id="modalCategory">Cuidados com a Pele</p>
@@ -2061,7 +2087,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
         <p class="admin-form-title" id="adminEditTitle">✏️ Kit Presente Luxo</p>
 
         <div class="admin-field">
-          <label class="admin-label">📸 Imagem do Produto</label>
+          <label class="admin-label">📸 Imagem Principal</label>
           <div class="img-upload-area" id="editImgArea" onclick="document.getElementById('editImgFile').click()">
             <input class="admin-inp" type="text" id="editImgUrl" placeholder="Cole aqui o link da imagem (https://...)" oninput="previewImageUrl('edit')" style="margin-bottom:0.5rem;" onclick="event.stopPropagation()">
             <input type="file" id="editImgFile" accept="image/*" style="display:none" onchange="uploadImagem('edit')">
@@ -2071,6 +2097,18 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
               <p class="img-upload-text"><strong>Clique ou arraste</strong> a imagem aqui<br>JPG, PNG, WEBP • Recomendado: 600×600px</p>
             </div>
           </div>
+        </div>
+        <div class="admin-field">
+          <label class="admin-label">🖼️ Imagens Extras (galeria)</label>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <input class="admin-inp" type="text" id="editExtraImgUrl" placeholder="Cole URL da imagem extra..." style="flex:1;margin:0;">
+            <button class="admin-save-btn" onclick="editAddExtraImgUrl()" style="flex:0;padding:.6rem 1rem;font-size:.8rem;">+ URL</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <input type="file" id="editExtraImgFile" accept="image/*" style="display:none" onchange="editUploadExtraImg(this)">
+            <button class="admin-save-btn" onclick="document.getElementById('editExtraImgFile').click()" style="width:100%;padding:.6rem;font-size:.8rem;background:rgba(255,255,255,.08);">📤 Upload imagem extra</button>
+          </div>
+          <div class="extra-imgs-list" id="editExtraImgsList"></div>
         </div>
 
         <div class="admin-field">
@@ -2143,7 +2181,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
       </p>
 
       <div class="admin-field">
-        <label class="admin-label">📸 Imagem do Produto</label>
+        <label class="admin-label">📸 Imagem Principal</label>
         <div class="img-upload-area" id="addImgArea" onclick="document.getElementById('addImgFile').click()">
           <input class="admin-inp" type="text" id="addImgUrl" placeholder="Cole aqui o link da imagem (https://...)" oninput="previewImageUrl('add')" style="margin-bottom:0.5rem;" onclick="event.stopPropagation()">
           <input type="file" id="addImgFile" accept="image/*" style="display:none" onchange="uploadImagem('add')">
@@ -2153,6 +2191,18 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
             <p class="img-upload-text"><strong>Clique ou arraste</strong> a imagem aqui<br>JPG, PNG, WEBP • Recomendado: 600×600px</p>
           </div>
         </div>
+      </div>
+      <div class="admin-field">
+        <label class="admin-label">🖼️ Imagens Extras (galeria)</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input class="admin-inp" type="text" id="addExtraImgUrl" placeholder="Cole URL da imagem extra..." style="flex:1;margin:0;">
+          <button class="admin-save-btn" onclick="addAddExtraImgUrl()" style="flex:0;padding:.6rem 1rem;font-size:.8rem;">+ URL</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="file" id="addExtraImgFile" accept="image/*" style="display:none" onchange="addUploadExtraImg(this)">
+          <button class="admin-save-btn" onclick="document.getElementById('addExtraImgFile').click()" style="width:100%;padding:.6rem;font-size:.8rem;background:rgba(255,255,255,.08);">📤 Upload imagem extra</button>
+        </div>
+        <div class="extra-imgs-list" id="addExtraImgsList"></div>
       </div>
 
       <div class="admin-field">
@@ -2706,7 +2756,8 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     const priceOld = card.querySelector('.product-price-old');
     const badgeEl  = card.querySelector('.product-badge');
 
-    document.getElementById('modalImg').src = img.src;
+    const mainSrc = img.src;
+    document.getElementById('modalImg').src = mainSrc;
     document.getElementById('modalImg').alt = name;
     document.getElementById('modalName').textContent = name;
     document.getElementById('modalCategory').textContent = category;
@@ -2723,6 +2774,26 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     } else {
       mb.style.display = 'none';
     }
+
+    // ── galeria de imagens ──
+    const imagensRaw = card.dataset.imagens || '[]';
+    let imagens = [];
+    try { imagens = JSON.parse(imagensRaw); } catch(e) {}
+    // garante a imagem principal como primeira
+    const allImgs = [mainSrc, ...imagens.filter(u => u && u !== mainSrc)];
+    const thumbWrap = document.getElementById('modalThumbWrap');
+    const thumbsEl  = document.getElementById('modalThumbs');
+    if (allImgs.length > 1) {
+      thumbsEl.innerHTML = allImgs.map((u, i) =>
+        `<img class="modal-thumb${i===0?' active':''}" src="${u}" alt="foto ${i+1}"
+              onclick="selectModalThumb(this,'${u}')">`
+      ).join('');
+      thumbWrap.classList.add('has-thumbs');
+    } else {
+      thumbsEl.innerHTML = '';
+      thumbWrap.classList.remove('has-thumbs');
+    }
+
     const wppMsg = encodeURIComponent(`Olá! Gostaria de comprar ${name}`);
     document.getElementById('modalWpp').href = `https://wa.me/${globalWppNumber}?text=${wppMsg}`;
     const mpLink = card.dataset.mp || '';
@@ -2732,6 +2803,87 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     document.getElementById('modalOverlay').classList.add('open');
     document.body.style.overflow = 'hidden';
   }
+
+  function selectModalThumb(el, src) {
+    document.getElementById('modalImg').src = src;
+    document.querySelectorAll('.modal-thumb').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // ── GALERIA EXTRA HELPERS ────────────────────────────────────────────────
+  function getExtraImgs(mode) {
+    const list = document.getElementById(mode + 'ExtraImgsList');
+    if (!list) return [];
+    return [...list.querySelectorAll('.extra-img-row')].map(r => r.dataset.url).filter(Boolean);
+  }
+
+  function clearExtraImgs(mode) {
+    const list = document.getElementById(mode + 'ExtraImgsList');
+    if (list) list.innerHTML = '';
+    const urlInp = document.getElementById(mode + 'ExtraImgUrl');
+    if (urlInp) urlInp.value = '';
+  }
+
+  function appendExtraImg(mode, url) {
+    if (!url) return;
+    const list = document.getElementById(mode + 'ExtraImgsList');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'extra-img-row';
+    row.dataset.url = url;
+    row.innerHTML = `
+      <img class="extra-img-thumb" src="${url}" onerror="this.style.opacity='.3'">
+      <span class="extra-img-url" title="${url}">${url}</span>
+      <button class="extra-img-del" onclick="this.closest('.extra-img-row').remove()" title="Remover">×</button>`;
+    list.appendChild(row);
+  }
+
+  function editAddExtraImgUrl() {
+    const inp = document.getElementById('editExtraImgUrl');
+    const url = inp.value.trim();
+    if (!url) return;
+    appendExtraImg('edit', url);
+    inp.value = '';
+  }
+
+  function addAddExtraImgUrl() {
+    const inp = document.getElementById('addExtraImgUrl');
+    const url = inp.value.trim();
+    if (!url) return;
+    appendExtraImg('add', url);
+    inp.value = '';
+  }
+
+  async function editUploadExtraImg(input) {
+    const file = input.files[0];
+    if (!file) return;
+    showToast('⏳ Enviando imagem extra...');
+    const fd = new FormData();
+    fd.append('imagem', file);
+    try {
+      const res = await fetch(API_URL + '/upload', { method: 'POST', headers: { 'Authorization': 'Bearer ' + adminToken }, body: fd });
+      const data = await res.json();
+      if (data.url) { appendExtraImg('edit', data.url); showToast('✅ Imagem extra adicionada!'); }
+      else showToast('❌ Erro no upload.');
+    } catch(e) { showToast('❌ Erro de conexão.'); }
+    input.value = '';
+  }
+
+  async function addUploadExtraImg(input) {
+    const file = input.files[0];
+    if (!file) return;
+    showToast('⏳ Enviando imagem extra...');
+    const fd = new FormData();
+    fd.append('imagem', file);
+    try {
+      const res = await fetch(API_URL + '/upload', { method: 'POST', headers: { 'Authorization': 'Bearer ' + adminToken }, body: fd });
+      const data = await res.json();
+      if (data.url) { appendExtraImg('add', data.url); showToast('✅ Imagem extra adicionada!'); }
+      else showToast('❌ Erro no upload.');
+    } catch(e) { showToast('❌ Erro de conexão.'); }
+    input.value = '';
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   function closeModal() {
     document.getElementById('modalOverlay').classList.remove('open');
@@ -2798,7 +2950,8 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
           uid: p.uid,
           img: p.img, name: p.name, desc: p.descricao,
           price: p.price, priceOld: p.price_old,
-          badge: p.badge, cat: p.cat, sub: p.sub, wpp: p.wpp
+          badge: p.badge, cat: p.cat, sub: p.sub, wpp: p.wpp,
+          imagens: p.imagens || []
         });
       });
       assignUIDs();
@@ -3238,6 +3391,11 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     if (ph) ph.style.display = 'none';
     editImgData = (imgSrc.startsWith('http') || imgSrc.startsWith('data:')) ? imgSrc : null;
 
+    // carrega imagens extras existentes
+    const existingImagens = (() => { try { return JSON.parse(card.dataset.imagens || '[]'); } catch(e) { return []; } })();
+    clearExtraImgs('edit');
+    existingImagens.forEach(url => appendExtraImg('edit', url));
+
     // Badge
     const badgeEl = card.querySelector('.product-badge');
     editBadgeVal = 'none';
@@ -3306,7 +3464,8 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     if (!name || !price) { showToast('⚠️ Preencha o nome e o preço!'); return; }
 
     const uid = editingCard.dataset.uid;
-    const payload = { uid, name, descricao: desc, price, price_old: priceOld, img, badge: editBadgeVal || 'none', cat, sub, wpp };
+    const imagens = getExtraImgs('edit');
+    const payload = { uid, name, descricao: desc, price, price_old: priceOld, img, badge: editBadgeVal || 'none', cat, sub, wpp, imagens };
 
     try {
       const res = await fetch(API_URL + '/produtos/' + uid, {
@@ -3319,6 +3478,7 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
       showToast('❌ Erro de conexão.'); return;
     }
 
+    editingCard.dataset.imagens = JSON.stringify(imagens);
     applyDataToCard(editingCard, { name, desc, price, priceOld, badge: editBadgeVal, wpp, img, cat, sub });
     showToast('✅ Produto atualizado com sucesso!');
     showAdminList();
@@ -3414,7 +3574,8 @@ card.dataset.uid  = uid;
     if (!adminToken) { showToast('⚠️ Faça login novamente.'); return; }
 
     const uid = 'pnew_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-    const payload = { uid, name, descricao: desc, price, price_old: priceOld, img, badge: addBadgeVal || 'none', cat, sub, wpp, mp_link };
+    const imagens = getExtraImgs('add');
+    const payload = { uid, name, descricao: desc, price, price_old: priceOld, img, badge: addBadgeVal || 'none', cat, sub, wpp, mp_link, imagens };
 
     try {
       showToast('⏳ Salvando produto...');
@@ -3425,7 +3586,7 @@ card.dataset.uid  = uid;
       });
       if (!res.ok) { showToast('❌ Erro ao salvar produto.'); return; }
 
-      createProductCard({ uid, name, desc, price, priceOld, img, badge: addBadgeVal || 'none', cat, sub, wpp, mp_link });
+      createProductCard({ uid, name, desc, price, priceOld, img, badge: addBadgeVal || 'none', cat, sub, wpp, mp_link, imagens });
       showToast('🎉 Produto adicionado ao catálogo!');
 
       // Reset form
@@ -3438,6 +3599,7 @@ card.dataset.uid  = uid;
       document.getElementById('addImgPreview').classList.remove('show');
       document.getElementById('addImgPlaceholder').style.display = '';
       const _aiu = document.getElementById('addImgUrl'); if(_aiu) _aiu.value = '';
+      clearExtraImgs('add');
       addImgData = null; addBadgeVal = 'none';
       document.querySelectorAll('#addBadgeSelector .badge-opt').forEach(o => o.classList.toggle('sel', o.dataset.val==='none'));
       applyFilter();

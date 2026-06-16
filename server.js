@@ -59,22 +59,24 @@ app.get('/api/produtos', async (req, res) => {
 });
 
 app.post('/api/produtos', authMiddleware, async (req, res) => {
-  const { uid, name, descricao, price, price_old, img, badge, cat, sub, wpp } = req.body;
+  const { uid, name, descricao, price, price_old, img, badge, cat, sub, wpp, imagens } = req.body;
+  const imagensArr = Array.isArray(imagens) ? imagens : (imagens ? [imagens] : []);
   try {
     const { rows } = await pool.query(
-      `INSERT INTO produtos (uid, name, descricao, price, price_old, img, badge, cat, sub, wpp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [uid, name, descricao, price, price_old, img, badge || 'none', cat, sub, wpp]
+      `INSERT INTO produtos (uid, name, descricao, price, price_old, img, badge, cat, sub, wpp, imagens) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [uid, name, descricao, price, price_old, img, badge || 'none', cat, sub, wpp, imagensArr]
     );
     res.json(rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/produtos/:uid', authMiddleware, async (req, res) => {
-  const { name, descricao, price, price_old, img, badge, cat, sub, wpp } = req.body;
+  const { name, descricao, price, price_old, img, badge, cat, sub, wpp, imagens } = req.body;
+  const imagensArr = Array.isArray(imagens) ? imagens : (imagens ? [imagens] : []);
   try {
     const { rows } = await pool.query(
-      `UPDATE produtos SET name=$1, descricao=$2, price=$3, price_old=$4, img=$5, badge=$6, cat=$7, sub=$8, wpp=$9, updated_at=NOW() WHERE uid=$10 RETURNING *`,
-      [name, descricao, price, price_old, img, badge, cat, sub, wpp, req.params.uid]
+      `UPDATE produtos SET name=$1, descricao=$2, price=$3, price_old=$4, img=$5, badge=$6, cat=$7, sub=$8, wpp=$9, imagens=$10, updated_at=NOW() WHERE uid=$11 RETURNING *`,
+      [name, descricao, price, price_old, img, badge, cat, sub, wpp, imagensArr, req.params.uid]
     );
     res.json(rows[0] || {});
   } catch (err) { res.status(500).json({ error: err.message }); }
