@@ -3525,6 +3525,7 @@ card.dataset.uid  = uid;
     card.dataset.priceOld = String(p.priceOld || '0').replace(',','.');
     card.dataset.badge    = p.badge || 'none';
     card.dataset.idx      = grid ? grid.querySelectorAll('.product-card').length : 0;
+    card.dataset.imagens  = JSON.stringify(Array.isArray(p.imagens) ? p.imagens : []);
 
     const imgSrc = p.img || 'https://uiickpwlwsayewcukiog.supabase.co/storage/v1/object/public/Produtos/Produtos/Id_Nimari.jpeg';
     const catLabel = subLabels[p.sub] || p.cat || '';
