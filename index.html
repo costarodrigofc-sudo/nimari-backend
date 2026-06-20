@@ -709,8 +709,51 @@
       .modal { grid-template-columns: 1fr; }
       .modal-img { min-height: 240px; max-height: 260px; }
     }
+
+    /* ── MOBILE (≤ 500px) ── */
     @media (max-width: 500px) {
-      .products-grid { grid-template-columns: 1fr; }
+      /* Grid 2 colunas no celular */
+      .products-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+
+      /* Cards mais compactos */
+      .product-card { border-radius: 6px; }
+      .product-img-wrap { aspect-ratio: 3/4; }
+      .product-info { padding: 0.6rem 0.5rem 0.8rem; }
+      .product-name {
+        font-size: 0.72rem; line-height: 1.3;
+        display: -webkit-box; -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical; overflow: hidden;
+      }
+      .product-category-tag { font-size: 0.55rem; margin-bottom: 0.2rem; }
+      .product-desc { display: none; }
+      .product-price { font-size: 1rem; }
+      .product-price-old { font-size: 0.7rem; }
+      .product-actions { gap: 0.3rem; padding: 0 0.5rem 0.6rem; }
+      .product-btn-primary { font-size: 0.62rem; padding: 0.55rem 0.3rem; }
+      .product-btn-secondary { font-size: 0.62rem; padding: 0.5rem 0.3rem; }
+
+      /* Modal mobile: imagem compacta, info sempre visível */
+      .modal-overlay { padding: 0; align-items: flex-end; }
+      .modal {
+        max-height: 92vh; width: 100%; border-radius: 16px 16px 0 0;
+        display: flex; flex-direction: column; overflow: hidden;
+      }
+      .modal-img-wrap { flex-shrink: 0; height: 38vh; }
+      .modal-img { height: 100%; min-height: unset; max-height: unset; object-fit: cover; }
+      .modal-thumb-wrap.has-thumbs { flex-shrink: 0; }
+      .modal-thumbs { padding: 6px 10px; gap: 5px; }
+      .modal-thumb { width: 48px; height: 48px; }
+      .modal-content {
+        flex: 1; overflow-y: auto; padding: 1.2rem 1.2rem 1.5rem;
+        display: flex; flex-direction: column;
+      }
+      .modal-close { margin-bottom: 0.5rem; }
+      .modal-name { font-size: 1.1rem; margin-bottom: 0.4rem; }
+      .modal-desc { font-size: 0.8rem; margin-bottom: 0.8rem; line-height: 1.5; }
+      .modal-price { font-size: 1.4rem; }
+      .modal-price-row { margin-bottom: 0.8rem; }
+      .modal-wpp { padding: 0.75rem; font-size: 0.72rem; }
+      .modal-mp { padding: 0.7rem; font-size: 0.75rem; }
     }
 
     /* ══════════════════════════════════════
@@ -1312,7 +1355,7 @@
 
     @media (max-width: 480px) {
       .benefits-grid { grid-template-columns: 1fr; }
-      .products-grid { grid-template-columns: 1fr; }
+      /* products-grid stays 2 columns on mobile — handled in 500px block above */
     }
 
     /* ══════════════════════════════════════
