@@ -964,6 +964,9 @@
     .badge-opt[data-val="novo"]:hover, .badge-opt[data-val="novo"].sel { background: var(--rose-deep); color: var(--white); border-color: var(--rose-deep); }
     .badge-opt[data-val="oferta"]:hover, .badge-opt[data-val="oferta"].sel { background: #B85C5C; color: var(--white); border-color: #B85C5C; }
     .badge-opt[data-val="esgotado"]:hover, .badge-opt[data-val="esgotado"].sel { background: #555; color: var(--white); border-color: #555; }
+    /* esgotado card overlay */
+    .product-card:has(.product-badge.esgotado) .product-img { opacity: 0.55; filter: grayscale(40%); }
+    .product-card:has(.product-badge.esgotado) .product-btn-primary { opacity: 0.5; pointer-events: none; }
 
     /* Action buttons */
     .admin-actions { display: flex; gap: 0.75rem; margin-top: 1.8rem; flex-wrap: wrap; }
@@ -2312,6 +2315,7 @@ Nascemos agora, mas nascemos com propósito: reunir as marcas que você já ama 
           <span class="badge-opt" data-val="vendido">⭐ Mais Vendido</span>
           <span class="badge-opt" data-val="novo">✨ Novo</span>
           <span class="badge-opt" data-val="oferta">🔥 Oferta</span>
+          <span class="badge-opt" data-val="esgotado">🚫 Esgotado</span>
         </div>
       </div>
 
@@ -3029,9 +3033,10 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     let bEl = card.querySelector('.product-badge');
     if (p.badge && p.badge !== 'none') {
       if (!bEl) { bEl = document.createElement('span'); bEl.className='product-badge'; card.insertBefore(bEl, card.firstChild); }
-      if (p.badge === 'vendido') { bEl.textContent='Mais Vendido'; bEl.className='product-badge'; }
-      if (p.badge === 'novo')    { bEl.textContent='Novo';         bEl.className='product-badge novo'; }
-      if (p.badge === 'oferta')  { bEl.textContent='Oferta';       bEl.className='product-badge oferta'; }
+      if (p.badge === 'vendido')  { bEl.textContent='Mais Vendido'; bEl.className='product-badge'; }
+      if (p.badge === 'novo')     { bEl.textContent='Novo';         bEl.className='product-badge novo'; }
+      if (p.badge === 'oferta')   { bEl.textContent='Oferta';       bEl.className='product-badge oferta'; }
+      if (p.badge === 'esgotado') { bEl.textContent='Esgotado';     bEl.className='product-badge esgotado'; }
     } else if (bEl) { bEl.remove(); }
     // wpp — store on card dataset for admin retrieval
     const wppNum = (p.wpp || globalWppNumber).replace(/\D/g,'') || globalWppNumber;
@@ -3048,7 +3053,8 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
       let badge = 'none';
       if (badgeEl) {
         if (badgeEl.classList.contains('novo'))        badge = 'novo';
-        else if (badgeEl.classList.contains('oferta')) badge = 'oferta';
+        else if (badgeEl.classList.contains('oferta'))   badge = 'oferta';
+        else if (badgeEl.classList.contains('esgotado')) badge = 'esgotado';
         else badge = 'vendido';
       }
       const payload = {
@@ -3443,9 +3449,10 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     const badgeEl = card.querySelector('.product-badge');
     editBadgeVal = 'none';
     if (badgeEl) {
-      if (badgeEl.classList.contains('novo'))        editBadgeVal = 'novo';
-      else if (badgeEl.classList.contains('oferta')) editBadgeVal = 'oferta';
-      else                                            editBadgeVal = 'vendido';
+      if (badgeEl.classList.contains('novo'))          editBadgeVal = 'novo';
+      else if (badgeEl.classList.contains('oferta'))   editBadgeVal = 'oferta';
+      else if (badgeEl.classList.contains('esgotado')) editBadgeVal = 'esgotado';
+      else                                              editBadgeVal = 'vendido';
     }
     document.querySelectorAll('#adminEditForm .badge-opt').forEach(opt =>
       opt.classList.toggle('sel', opt.dataset.val === editBadgeVal)
