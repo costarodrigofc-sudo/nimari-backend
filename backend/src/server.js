@@ -413,6 +413,18 @@ async function initDatabase() {
       BEGIN
         IF EXISTS (
           SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'produtos' AND column_name = 'uid'
+        ) THEN
+          UPDATE produtos
+          SET uid = 'prod-' || id::text || '-' || substr(md5(random()::text), 1, 8)
+          WHERE uid IS NULL OR TRIM(uid) = '';
+
+          ALTER TABLE produtos
+            ALTER COLUMN uid DROP NOT NULL;
+        END IF;
+
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
           WHERE table_schema = 'public' AND table_name = 'produtos' AND column_name = 'name'
         ) AND EXISTS (
           SELECT 1 FROM information_schema.columns
@@ -639,6 +651,8 @@ app.post('/api/produtos', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'O nome do produto é obrigatório.' });
     }
 
+    const uidFinal = String(body.uid || '').trim() || `prod-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+
     const rawPriceInput =
       body.preco !== undefined && body.preco !== null && String(body.preco).trim() !== ''
         ? body.preco
@@ -685,7 +699,7 @@ app.post('/api/produtos', requireAdmin, async (req, res) => {
       placeholders.push(`$${insertVals.length}${cast}`);
     };
 
-    pushCol('uid', body.uid || null);
+    pushCol('uid', uidFinal);
     pushCol('name', nomeFinal);
     pushCol('nome', nomeFinal);
     pushCol('descricao', descricao);
