@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -46,7 +47,6 @@ function buildPool() {
   let port = Number(process.env.PGPORT || process.env.DB_PORT || 5432);
 
   if (rawUrl) {
-    // Ex.: "kodama.proxy.rlwy.net:56955" ou "kodama.proxy.rlwy.net"
     const hostPortMatch = rawUrl.match(/^([^/:]+)(?::(\d+))?$/);
     if (hostPortMatch) {
       host = hostPortMatch[1].trim();
@@ -98,6 +98,21 @@ const { pool, label: dbLabel } = buildPool();
 
 app.use(cors());
 app.use(express.json());
+
+// Caminho para a raiz do projeto onde estão index.html, produto.html, app.js, styles.css e favicon_io
+const PUBLIC_ROOT = path.resolve(__dirname, '..', '..');
+
+// Bloqueia acesso direto a ficheiros sensíveis ou pastas internas do backend
+app.use((req, res, next) => {
+  const blocked = /^\/(backend|\.env|\.git|package(-lock)?\.json)/i;
+  if (blocked.test(req.path)) {
+    return res.status(404).end();
+  }
+  next();
+});
+
+// Serve os ficheiros estáticos do frontend da NIMARI (index.html, produto.html, app.js, styles.css, favicon_io)
+app.use(express.static(PUBLIC_ROOT, { index: 'index.html' }));
 
 function parsePriceValue(value) {
   if (typeof value === 'number') {
@@ -233,6 +248,15 @@ app.post('/api/produtos', async (req, res) => {
     console.error('Erro ao criar produto:', err);
     res.status(500).json({ error: 'Erro interno ao criar produto.' });
   }
+});
+
+// Rotas explícitas das páginas HTML da loja NIMARI
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(PUBLIC_ROOT, 'index.html'));
+});
+
+app.get('/produto', (_req, res) => {
+  res.sendFile(path.join(PUBLIC_ROOT, 'produto.html'));
 });
 
 async function startServer() {
