@@ -119,6 +119,18 @@ async function initDatabase() {
       created_at BIGINT NOT NULL DEFAULT 0
     );
 
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS descricao TEXT NOT NULL DEFAULT '';
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_antigo NUMERIC(12, 2);
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS categoria TEXT NOT NULL DEFAULT 'cosmeticos';
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS subcategoria TEXT NOT NULL DEFAULT 'outros-cosm';
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS imagem TEXT NOT NULL DEFAULT '';
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS imagens JSONB NOT NULL DEFAULT '[]'::jsonb;
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS badge TEXT NOT NULL DEFAULT 'none';
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS wpp TEXT NOT NULL DEFAULT '';
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS mp_link TEXT NOT NULL DEFAULT '';
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS vendas INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0;
+
     CREATE TABLE IF NOT EXISTS depoimentos (
       id TEXT PRIMARY KEY,
       avatar TEXT NOT NULL DEFAULT '',
@@ -130,6 +142,12 @@ async function initDatabase() {
       created_at BIGINT NOT NULL DEFAULT 0
     );
 
+    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS avatar TEXT NOT NULL DEFAULT '';
+    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS stars INTEGER NOT NULL DEFAULT 5;
+    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS loc TEXT NOT NULL DEFAULT '';
+    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS date TEXT NOT NULL DEFAULT '';
+    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0;
+
     CREATE TABLE IF NOT EXISTS config_site (
       id TEXT PRIMARY KEY DEFAULT 'default',
       wpp_number TEXT NOT NULL DEFAULT '5598985631126',
@@ -137,6 +155,11 @@ async function initDatabase() {
       hidden_categories JSONB NOT NULL DEFAULT '[]'::jsonb,
       brands JSONB NOT NULL DEFAULT '[]'::jsonb
     );
+
+    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS wpp_number TEXT NOT NULL DEFAULT '5598985631126';
+    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS about_image TEXT NOT NULL DEFAULT '';
+    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS hidden_categories JSONB NOT NULL DEFAULT '[]'::jsonb;
+    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS brands JSONB NOT NULL DEFAULT '[]'::jsonb;
 
     INSERT INTO config_site (id, wpp_number, about_image, hidden_categories, brands)
     VALUES ('default', '5598985631126', '', '[]'::jsonb, '[]'::jsonb)
@@ -303,7 +326,8 @@ function mapProdutoRow(row) {
     nome: row.nome,
     descricao: row.descricao || '',
     preco: Number(row.preco) || 0,
-    precoAntigo: row.preco_antigo !== null && row.preco_antigo !== undefined ? Number(row.preco_antigo) : null,
+    precoAntigo:
+      row.preco_antigo !== null && row.preco_antigo !== undefined ? Number(row.preco_antigo) : null,
     categoria: row.categoria || 'cosmeticos',
     subcategoria: row.subcategoria || 'outros-cosm',
     imagem: row.imagem || '',
@@ -384,11 +408,11 @@ app.post('/api/upload', autenticarAdmin, upload.single('file'), async (req, res)
 // ==========================================
 app.get('/api/produtos', async (_req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM produtos ORDER BY created_at DESC');
+    const result = await pool.query('SELECT * FROM produtos ORDER BY COALESCE(created_at, 0) DESC, id DESC');
     return res.json(result.rows.map(mapProdutoRow));
   } catch (err) {
     console.error('Erro ao listar produtos:', err);
-    return res.status(500).json({ error: 'Erro ao carregar produtos.' });
+    return res.status(500).json({ error: 'Erro ao carregar produtos.', detail: err.message });
   }
 });
 
@@ -532,7 +556,7 @@ app.delete('/api/produtos', autenticarAdmin, async (_req, res) => {
 // ==========================================
 app.get('/api/depoimentos', async (_req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM depoimentos ORDER BY created_at DESC');
+    const result = await pool.query('SELECT * FROM depoimentos ORDER BY COALESCE(created_at, 0) DESC, id DESC');
     return res.json(result.rows.map(mapDepoRow));
   } catch (err) {
     console.error('Erro ao listar depoimentos:', err);
