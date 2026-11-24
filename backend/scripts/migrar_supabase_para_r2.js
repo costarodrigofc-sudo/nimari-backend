@@ -10,14 +10,55 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 sharp.cache(false);
 sharp.concurrency(1);
 
-const DRY_RUN = process.argv.includes('--dry-run');
+const args = process.argv.slice(2);
+const DRY_RUN = args.includes('--dry-run');
 
-const required = [
-  'DB_HOST',
-  'DB_PORT',
-  'DB_NAME',
-  'DB_USER',
-  'DB_PASS',
+function getArgValue(prefix) {
+  const found = args.find((a) => a.startsWith(`${prefix}=`));
+  return found ? found.slice(prefix.length + 1) : '';
+}
+
+const cliDbUrl = getArgValue('--db-url');
+const cliHost = getArgValue('--host');
+const cliPort = getArgValue('--port');
+const cliPass = getArgValue('--pass');
+
+const dbUrl = cliDbUrl || process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL || '';
+
+function buildPoolConfig() {
+  if (dbUrl && !dbUrl.includes('${{')) {
+    const useSsl = dbUrl.includes('rlwy.net') || dbUrl.includes('railway') || process.env.NODE_ENV === 'production';
+    return {
+      connectionString: dbUrl,
+      ssl: useSsl ? { rejectUnauthorized: false } : false,
+    };
+  }
+
+  const host = cliHost || process.env.DB_HOST;
+  const port = Number(cliPort || process.env.DB_PORT || 5432);
+  const database = process.env.DB_NAME || 'railway';
+  const user = process.env.DB_USER || 'postgres';
+  const password = cliPass || process.env.DB_PASS;
+
+  if (!host || host.includes('${{') || !password || password.includes('${{')) {
+    console.error('❌ Conexão com PostgreSQL não resolvida.');
+    console.error('👉 No Console do Railway, basta rodar: node scripts/migrar_supabase_para_r2.js');
+    console.error('👉 No seu PC com proxy público, rode: node scripts/migrar_supabase_para_r2.js --db-url="postgresql://postgres:SENHA@HOST.proxy.rlwy.net:PORTA/railway"');
+    process.exit(1);
+  }
+
+  const useSsl = host.includes('rlwy.net') || host.includes('railway') || process.env.NODE_ENV === 'production';
+  return {
+    host,
+    port,
+    database,
+    user,
+    password,
+    ssl: useSsl ? { rejectUnauthorized: false } : false,
+  };
+}
+
+const requiredR2 = [
   'R2_ACCOUNT_ID',
   'R2_ACCESS_KEY_ID',
   'R2_SECRET_ACCESS_KEY',
@@ -25,21 +66,14 @@ const required = [
   'R2_PUBLIC_URL',
 ];
 
-for (const key of required) {
-  if (!process.env[key]) {
-    console.error(`❌ Variável obrigatória ausente: ${key}`);
+for (const key of requiredR2) {
+  if (!process.env[key] || String(process.env[key]).includes('COLE_AQUI')) {
+    console.error(`❌ Variável R2 obrigatória ausente ou não preenchida: ${key}`);
     process.exit(1);
   }
 }
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  ssl: process.env.DB_HOST.includes('rlwy.net') ? { rejectUnauthorized: false } : false,
-});
+const pool = new Pool(buildPoolConfig());
 
 const r2 = new S3Client({
   region: 'auto',
