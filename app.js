@@ -428,3 +428,156 @@ window.nimariCriarProduto = nimariCriarProduto;
     }
   });
 })();
+/* ── PAINEL RÁPIDO DE CADASTRO E UPLOAD WEBP (R2 + POSTGRES) ── */
+(function () {
+  const API_BASE =
+    typeof window.NIMARI_API_URL === 'string' && window.NIMARI_API_URL
+      ? window.NIMARI_API_URL.replace(/\/$/, '')
+      : '/api';
+
+  function getToken() {
+    return sessionStorage.getItem('nimari_admin_token') || '';
+  }
+
+  window.abrirPainelCadastroNimari = function () {
+    if (!getToken()) {
+      window.openAdminLogin?.();
+      return;
+    }
+
+    let box = document.getElementById('nimariQuickProductModal');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'nimariQuickProductModal';
+      box.style.cssText =
+        'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;';
+
+      box.innerHTML = `
+        <div style="background:#fff;color:#1a1a1a;width:100%;max-width:460px;border-radius:10px;padding:20px;box-shadow:0 12px 32px rgba(0,0,0,.35);font-family:sans-serif;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <strong style="font-size:16px;">Cadastrar Produto · NIMARI</strong>
+            <button type="button" id="nimariCloseQuickProd" style="background:none;border:none;font-size:20px;cursor:pointer;">×</button>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <input id="qpNome" type="text" placeholder="Nome do produto (ex.: Sabonete Líquido Natura)" style="padding:9px;border:1px solid #ccc;border-radius:6px;" />
+            <input id="qpPreco" type="text" placeholder="Preço (ex.: 49.90)" style="padding:9px;border:1px solid #ccc;border-radius:6px;" />
+            <select id="qpCategoria" style="padding:9px;border:1px solid #ccc;border-radius:6px;">
+              <option value="cosmeticos">Cosméticos</option>
+              <option value="moda-intima">Moda Íntima</option>
+              <option value="perfumaria">Perfumaria</option>
+            </select>
+            <input id="qpDescricao" type="text" placeholder="Descrição curta" style="padding:9px;border:1px solid #ccc;border-radius:6px;" />
+            <label style="font-size:12px;color:#444;">Imagem (converte para .webp no Cloudflare R2):</label>
+            <input id="qpFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" />
+            <div id="qpStatus" style="font-size:12px;color:#555;min-height:18px;word-break:break-all;"></div>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
+              <button type="button" id="nimariCancelQuickProd" style="padding:9px 14px;border:1px solid #ccc;background:#f5f5f5;border-radius:6px;cursor:pointer;">Fechar</button>
+              <button type="button" id="nimariSaveQuickProd" style="padding:9px 16px;border:none;background:#1a1a1a;color:#fff;border-radius:6px;cursor:pointer;">Salvar Produto</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(box);
+
+      const fechar = () => {
+        box.style.display = 'none';
+      };
+      box.querySelector('#nimariCloseQuickProd').onclick = fechar;
+      box.querySelector('#nimariCancelQuickProd').onclick = fechar;
+
+      box.querySelector('#nimariSaveQuickProd').onclick = async () => {
+        const statusEl = box.querySelector('#qpStatus');
+        const nome = box.querySelector('#qpNome').value.trim();
+        const preco = box.querySelector('#qpPreco').value.trim();
+        const categoria = box.querySelector('#qpCategoria').value;
+        const descricao = box.querySelector('#qpDescricao').value.trim();
+        const file = box.querySelector('#qpFile').files[0];
+        const token = getToken();
+
+        if (!nome) {
+          statusEl.textContent = 'Informe o nome do produto.';
+          return;
+        }
+
+        try {
+          let imagemUrl = '';
+          if (file) {
+            statusEl.textContent = 'Enviando imagem e convertendo para .webp no R2...';
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('pasta', 'produtos');
+
+            const upRes = await fetch(`${API_BASE}/upload`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: fd,
+            });
+            const upData = await upRes.json();
+            if (!upRes.ok || !upData.url) {
+              throw new Error(upData.error || 'Falha no upload para o R2.');
+            }
+            imagemUrl = upData.url;
+            statusEl.textContent = `Imagem WebP salva no R2: ${imagemUrl}`;
+          }
+
+          statusEl.textContent = 'Salvando produto no banco de dados...';
+          const prodRes = await fetch(`${API_BASE}/produtos`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              nome,
+              preco,
+              categoria,
+              descricao,
+              imagem: imagemUrl,
+              imagens: imagemUrl ? [imagemUrl] : [],
+            }),
+          });
+          const prodData = await prodRes.json();
+          if (!prodRes.ok) {
+            throw new Error(prodData.error || 'Falha ao cadastrar produto.');
+          }
+
+          statusEl.textContent = `Produto cadastrado com sucesso! ID: ${prodData.id}`;
+          if (typeof applySortAndFilter === 'function') {
+            if (Array.isArray(window.state?.produtos)) {
+              window.state.produtos.unshift(prodData);
+            }
+            applySortAndFilter();
+          }
+        } catch (err) {
+          statusEl.textContent = `Erro: ${err.message}`;
+        }
+      };
+    }
+
+    box.style.display = 'flex';
+  };
+
+  const oldAdminLogin = window.adminLogin;
+  window.adminLogin = async function () {
+    await oldAdminLogin?.();
+    if (getToken()) {
+      window.abrirPainelCadastroNimari();
+    }
+  };
+
+  window.addEventListener('DOMContentLoaded', () => {
+    if (!document.getElementById('nimariNovoProdutoBtn')) {
+      const btn = document.createElement('button');
+      btn.id = 'nimariNovoProdutoBtn';
+      btn.type = 'button';
+      btn.textContent = '+ Produto';
+      btn.style.cssText =
+        'position:fixed;bottom:14px;left:76px;z-index:9999;background:#8b4a62;color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;opacity:0.9;';
+      btn.addEventListener('click', window.abrirPainelCadastroNimari);
+      document.body.appendChild(btn);
+    }
+  });
+})();
