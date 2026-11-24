@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin · NIMARI</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { background: #141213; color: #f6f1ef; font-family: 'Jost', sans-serif; margin: 0; }
+    .adm-wrap { max-width: 1040px; margin: 0 auto; padding: 28px 18px 64px; }
+    .adm-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,.12); padding-bottom: 16px; }
+    .adm-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .adm-tab { padding: 9px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,.18); background: #1f1b1d; color: #fff; cursor: pointer; }
+    .adm-tab.active { background: #8b4a62; border-color: #8b4a62; }
+    .adm-card { background: #1e1a1c; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+    .adm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .adm-inp, .adm-sel, .adm-ta { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.18); background: #120f10; color: #fff; }
+    .adm-btn { padding: 10px 16px; border-radius: 8px; border: none; background: #8b4a62; color: #fff; cursor: pointer; font-weight: 500; }
+    .adm-btn.sec { background: #2d2729; }
+    .adm-btn.del { background: #8f2d2d; }
+    .adm-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .adm-msg { margin-top: 10px; font-size: .9rem; color: #f3c6d4; min-height: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .85rem; }
+    th, td { border: 1px solid rgba(255,255,255,.12); padding: 8px; text-align: left; }
+  </style>
+</head>
+<body>
+  <div class="adm-wrap">
+    <div class="adm-top">
+      <div>
+        <h1 style="margin:0;font-size:1.5rem;">Painel Administrativo · NIMARI</h1>
+        <small style="opacity:.75;">Gestão de produtos (individual e em lote)</small>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <a href="index.html" class="adm-btn sec" style="text-decoration:none;">Ver Vitrine</a>
+        <button type="button" class="adm-btn sec" onclick="sairAdmin()">Sair</button>
+      </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginBox" class="adm-card" style="max-width:420px;margin:40px auto;">
+      <h2 style="margin-top:0;">Acesso Restrito</h2>
+      <p style="opacity:.8;font-size:.9rem;">Digite a chave administrativa para gerenciar o catálogo.</p>
+      <input id="pwdInput" type="password" class="adm-inp" placeholder="Senha admin" onkeydown="if(event.key==='Enter')fazerLogin()">
+      <button type="button" class="adm-btn" style="margin-top:12px;width:100%;" onclick="fazerLogin()">Entrar</button>
+      <div id="loginErr" class="adm-msg"></div>
+    </div>
+
+    <!-- ÁREA LOGADA -->
+    <div id="panelBox" style="display:none;">
+      <div class="adm-tabs">
+        <button type="button" class="adm-tab active" data-tab="lista" onclick="trocarAba('lista')">Produtos Cadastrados</button>
+        <button type="button" class="adm-tab" data-tab="novo" onclick="trocarAba('novo')">Novo Produto</button>
+        <button type="button" class="adm-tab" data-tab="lote" onclick="trocarAba('lote')">Importar em Lote (.xlsx)</button>
+      </div>
+
+      <!-- ABA 1: LISTA E EDIÇÃO -->
+      <div id="aba-lista" class="adm-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
+          <input id="buscaAdmin" class="adm-inp" style="max-width:320px;" placeholder="Filtrar por nome ou categoria..." oninput="renderListaProdutos()">
+          <button type="button" class="adm-btn sec" onclick="carregarProdutos()">Atualizar Lista</button>
+        </div>
+        <div id="listaProdutos"></div>
+
+        <div id="formEdicao" style="display:none;margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,.15);">
+          <h3 style="margin-top:0;">Editando Produto #<span id="editIdLabel"></span></h3>
+          <div class="adm-grid">
+            <input id="editNome" class="adm-inp" placeholder="Nome do produto">
+            <input id="editPreco" class="adm-inp" placeholder="Preço (ex.: 59,90)">
+            <select id="editCat" class="adm-sel">
+              <option value="cosmeticos">Cosméticos</option>
+              <option value="confeccao">Confecção</option>
+              <option value="kit">Kit</option>
+            </select>
+            <input id="editImg" class="adm-inp" placeholder="URL da imagem">
+          </div>
+          <div style="margin-top:10px;">
+            <textarea id="editDesc" class="adm-ta" rows="2" placeholder="Descrição"></textarea>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:12px;">
+            <button type="button" class="adm-btn" onclick="salvarEdicao()">Salvar Alterações</button>
+            <button type="button" class="adm-btn del" onclick="excluirProdutoAtual()">Excluir</button>
+            <button type="button" class="adm-btn sec" onclick="fecharEdicao()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ABA 2: CADASTRO INDIVIDUAL -->
+      <div id="aba-novo" class="adm-card" style="display:none;">
+        <h3 style="margin-top:0;">Cadastrar Produto Individual</h3>
+        <div class="adm-grid">
+          <input id="novoNome" class="adm-inp" placeholder="Nome do produto *">
+          <input id="novoPreco" class="adm-inp" placeholder="Preço (ex.: 79,90)">
+          <select id="novoCat" class="adm-sel">
+            <option value="cosmeticos">Cosméticos</option>
+            <option value="confeccao">Confecção</option>
+            <option value="kit">Kit</option>
+          </select>
+          <input id="novoFile" type="file" accept="image/*" class="adm-inp">
+        </div>
+        <div style="margin-top:10px;">
+          <textarea id="novoDesc" class="adm-ta" rows="2" placeholder="Descrição do produto"></textarea>
+        </div>
+        <button type="button" class="adm-btn" style="margin-top:12px;" onclick="cadastrarIndividual()">Salvar Produto</button>
+        <div id="novoStatus" class="adm-msg"></div>
+      </div>
+
+      <!-- ABA 3: IMPORTAÇÃO EM LOTE -->
+      <div id="aba-lote" class="adm-card" style="display:none;">
+        <h3 style="margin-top:0;">Importar Produtos em Lote (.xlsx / .csv)</h3>
+        <p style="opacity:.8;font-size:.9rem;">Colunas esperadas: <code>nome</code>, <code>preco</code>, <code>categoria</code>, <code>descricao</code>, <code>imagem</code>.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <input id="loteFile" type="file" accept=".xlsx,.xls,.csv" onchange="lerArquivoLote(this.files[0])">
+          <button type="button" class="adm-btn sec" onclick="baixarModeloPlanilha()">Baixar Modelo .xlsx</button>
+        </div>
+        <div id="lotePreview" style="margin-top:14px;"></div>
+        <button type="button" id="btnImportarLote" class="adm-btn" style="display:none;margin-top:12px;" onclick="enviarLote()">Importar Todos para o Banco</button>
+        <div id="loteStatus" class="adm-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.NIMARI_API_URL = '/api';
+  </script>
+  <script src="admin.js"></script>
+</body>
+</html>

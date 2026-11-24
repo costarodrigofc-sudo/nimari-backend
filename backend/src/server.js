@@ -757,3 +757,250 @@ startServer().catch((err) => {
   console.error('Falha no arranque:', err);
   process.exit(1);
 });
+// ==========================================
+// ROTAS DE PRODUTOS (INDIVIDUAL + EM LOTE)
+// ==========================================
+app.get('/api/produtos', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM produtos ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Erro ao buscar produtos:', err);
+    res.status(500).json({ error: 'Erro interno ao buscar produtos.' });
+  }
+});
+
+async function inserirProdutoNoBanco(client, colMeta, body) {
+  const nomeFinal = String(body.name ?? body.nome ?? '').trim();
+  if (!nomeFinal) {
+    throw new Error('O nome do produto é obrigatório.');
+  }
+
+  const uidFinal =
+    String(body.uid || '').trim() ||
+    `prod-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+
+  const rawPriceInput =
+    body.preco !== undefined && body.preco !== null && String(body.preco).trim() !== ''
+      ? body.preco
+      : body.price;
+
+  const precoNormalizado = parsePriceValue(rawPriceInput);
+  const priceTexto =
+    rawPriceInput !== undefined && rawPriceInput !== null && String(rawPriceInput).trim() !== ''
+      ? String(rawPriceInput)
+      : precoNormalizado.toFixed(2).replace('.', ',');
+
+  const categoria = String(body.categoria || 'cosmeticos').trim() || 'cosmeticos';
+  const descricao = String(body.descricao || '').trim();
+  const imagensArr = Array.isArray(body.imagens)
+    ? body.imagens.filter(Boolean).map(String)
+    : body.imagem
+      ? [String(body.imagem).trim()]
+      : [];
+  const imagemPrincipal = String(body.imagem || imagensArr[0] || '').trim();
+
+  const insertCols = [];
+  const insertVals = [];
+  const placeholders = [];
+
+  const pushCol = (col, val, isArrayField = false) => {
+    const meta = colMeta.get(col);
+    if (!meta) return;
+
+    let formattedVal = val;
+    if (isArrayField) {
+      formattedVal = formatPgArrayOrJson(val, meta.udt_name, meta.data_type);
+    }
+
+    insertCols.push(col);
+    insertVals.push(formattedVal);
+    const cast = !isArrayField && meta.udt_name === 'jsonb' ? '::jsonb' : '';
+    placeholders.push(`$${insertVals.length}${cast}`);
+  };
+
+  pushCol('uid', uidFinal);
+  pushCol('name', nomeFinal);
+  pushCol('nome', nomeFinal);
+  pushCol('descricao', descricao);
+  pushCol('categoria', categoria);
+  pushCol('imagem', imagemPrincipal);
+  pushCol('imagens', imagensArr, true);
+  pushCol('price', priceTexto);
+  pushCol('preco', precoNormalizado);
+
+  if (insertCols.length === 0) {
+    throw new Error('Tabela produtos sem colunas compatíveis.');
+  }
+
+  const result = await client.query(
+    `INSERT INTO produtos (${insertCols.join(', ')})
+     VALUES (${placeholders.join(', ')})
+     RETURNING *`,
+    insertVals
+  );
+
+  const created = result.rows[0];
+  return {
+    ...created,
+    name: created.name || created.nome || nomeFinal,
+    nome: created.nome || created.name || nomeFinal,
+  };
+}
+
+app.post('/api/produtos', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const colsRes = await client.query(`
+      SELECT column_name, data_type, udt_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'produtos'
+    `);
+    const colMeta = new Map(colsRes.rows.map((r) => [r.column_name, r]));
+    const created = await inserirProdutoNoBanco(client, colMeta, req.body || {});
+    res.status(201).json(created);
+  } catch (err) {
+    console.error('Erro ao criar produto:', err);
+    res.status(400).json({
+      error: 'Erro ao criar produto.',
+      detail: err.message,
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// Cadastro em lote (array de produtos)
+app.post('/api/produtos/batch', requireAdmin, async (req, res) => {
+  const items = Array.isArray(req.body?.produtos) ? req.body.produtos : [];
+  if (items.length === 0) {
+    return res.status(400).json({ error: 'Envie uma lista em "produtos" para importar em lote.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const colsRes = await client.query(`
+      SELECT column_name, data_type, udt_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'produtos'
+    `);
+    const colMeta = new Map(colsRes.rows.map((r) => [r.column_name, r]));
+
+    const criados = [];
+    for (const item of items) {
+      const created = await inserirProdutoNoBanco(client, colMeta, item);
+      criados.push(created);
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json({ ok: true, count: criados.length, produtos: criados });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Erro na importação em lote:', err);
+    res.status(400).json({
+      error: 'Falha na importação em lote.',
+      detail: err.message,
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// Edição individual por ID
+app.put('/api/produtos/:id', requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID de produto inválido.' });
+  }
+
+  try {
+    const body = req.body || {};
+    const nomeFinal = String(body.name ?? body.nome ?? '').trim();
+    if (!nomeFinal) {
+      return res.status(400).json({ error: 'O nome do produto é obrigatório.' });
+    }
+
+    const rawPriceInput =
+      body.preco !== undefined && body.preco !== null && String(body.preco).trim() !== ''
+        ? body.preco
+        : body.price;
+    const precoNormalizado = parsePriceValue(rawPriceInput);
+    const priceTexto =
+      rawPriceInput !== undefined && rawPriceInput !== null && String(rawPriceInput).trim() !== ''
+        ? String(rawPriceInput)
+        : precoNormalizado.toFixed(2).replace('.', ',');
+
+    const categoria = String(body.categoria || 'cosmeticos').trim() || 'cosmeticos';
+    const descricao = String(body.descricao || '').trim();
+    const imagensArr = Array.isArray(body.imagens)
+      ? body.imagens.filter(Boolean).map(String)
+      : body.imagem
+        ? [String(body.imagem).trim()]
+        : [];
+    const imagemPrincipal = String(body.imagem || imagensArr[0] || '').trim();
+
+    const result = await pool.query(
+      `UPDATE produtos
+       SET name = $1,
+           nome = $1,
+           descricao = $2,
+           categoria = $3,
+           imagem = $4,
+           imagens = $5::jsonb,
+           price = $6,
+           preco = $7,
+           updated_at = NOW()
+       WHERE id = $8
+       RETURNING *`,
+      [
+        nomeFinal,
+        descricao,
+        categoria,
+        imagemPrincipal,
+        JSON.stringify(imagensArr),
+        priceTexto,
+        precoNormalizado,
+        id,
+      ]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
+    }
+
+    const updated = result.rows[0];
+    res.json({
+      ...updated,
+      name: updated.name || updated.nome || nomeFinal,
+      nome: updated.nome || updated.name || nomeFinal,
+    });
+  } catch (err) {
+    console.error('Erro ao atualizar produto:', err);
+    res.status(500).json({ error: 'Erro ao atualizar produto.', detail: err.message });
+  }
+});
+
+// Exclusão individual por ID
+app.delete('/api/produtos/:id', requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID de produto inválido.' });
+  }
+
+  try {
+    const result = await pool.query('DELETE FROM produtos WHERE id = $1 RETURNING id', [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
+    }
+    res.json({ ok: true, deletedId: id });
+  } catch (err) {
+    console.error('Erro ao excluir produto:', err);
+    res.status(500).json({ error: 'Erro ao excluir produto.' });
+  }
+});
+
+// Rota dedicada do painel administrativo
+app.get('/admin', (_req, res) => {
+  res.sendFile(path.join(PUBLIC_ROOT, 'admin.html'));
+});
