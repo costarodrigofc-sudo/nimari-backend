@@ -5,20 +5,30 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+/**
+ * Monta o Pool do PostgreSQL com segurança:
+ * 1. Só usa connectionString se começar por postgres:// ou postgresql://.
+ * 2. Se vier apenas host:porta (ex.: kodama.proxy.rlwy.net:56955), extrai o host e a porta
+ *    e monta a conexão usando POSTGRES_USER/DB_USER, POSTGRES_PASSWORD/DB_PASS e POSTGRES_DB/DB_NAME.
+ * 3. Nunca cai em localhost se houver credenciais/host válidos; se faltar configuração válida, lança erro explícito.
+ */
 function buildPool() {
-  const connectionString =
+  const user = (process.env.POSTGRES_USER || process.env.DB_USER || '').trim();
+  const password = process.env.POSTGRES_PASSWORD ?? process.env.DB_PASS ?? '';
+  const database = (process.env.POSTGRES_DB || process.env.DB_NAME || 'railway').trim();
+
+  const rawUrl = (
     process.env.DATABASE_URL ||
     process.env.DATABASE_PRIVATE_URL ||
     process.env.DATABASE_PUBLIC_URL ||
-    process.env.POSTGRES_URL;
+    process.env.POSTGRES_URL ||
+    ''
+  ).trim();
 
-  if (connectionString && connectionString.trim() !== '') {
-    const trimmed = connectionString.trim();
-    const isLocal =
-      trimmed.includes('localhost') ||
-      trimmed.includes('127.0.0.1') ||
-      trimmed.includes('::1');
+  const isValidProtocol = /^postgres(ql)?:\/\//i.test(rawUrl);
 
+  if (isValidProtocol) {
+    const isLocal = /localhost|127\.0\.0\.1|::1|\[::1\]/i.test(rawUrl);
     const ssl =
       process.env.DATABASE_SSL === 'false'
         ? false
@@ -27,16 +37,38 @@ function buildPool() {
           : false;
 
     return {
-      pool: new Pool({ connectionString: trimmed, ssl }),
-      label: 'connectionString',
+      pool: new Pool({ connectionString: rawUrl, ssl }),
+      label: 'URL completa (postgres://)',
     };
   }
 
-  if (process.env.PGHOST && process.env.PGHOST.trim() !== '') {
-    const host = process.env.PGHOST.trim();
-    const isLocal =
-      host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  let host = '';
+  let port = Number(process.env.PGPORT || process.env.DB_PORT || 5432);
 
+  if (rawUrl) {
+    // Ex.: "kodama.proxy.rlwy.net:56955" ou "kodama.proxy.rlwy.net"
+    const hostPortMatch = rawUrl.match(/^([^/:]+)(?::(\d+))?$/);
+    if (hostPortMatch) {
+      host = hostPortMatch[1].trim();
+      if (hostPortMatch[2]) {
+        port = Number(hostPortMatch[2]);
+      }
+    }
+  }
+
+  if (!host) {
+    const envHost = (process.env.PGHOST || process.env.DB_HOST || '').trim();
+    if (envHost && !/^localhost$|^127\.0\.0\.1$|^::1$/i.test(envHost)) {
+      host = envHost;
+    } else if (envHost) {
+      console.warn(
+        `AVISO: host "${envHost}" ignorado porque aponta para localhost/loopback.`
+      );
+    }
+  }
+
+  if (host) {
+    const isLocal = /^localhost$|^127\.0\.0\.1$|^::1$/i.test(host);
     const ssl =
       process.env.DATABASE_SSL === 'false'
         ? false
@@ -47,18 +79,18 @@ function buildPool() {
     return {
       pool: new Pool({
         host,
-        port: Number(process.env.PGPORT || 5432),
-        user: process.env.PGUSER || 'postgres',
-        password: process.env.PGPASSWORD,
-        database: process.env.PGDATABASE || 'railway',
+        port: Number.isFinite(port) && port > 0 ? port : 5432,
+        user: user || 'postgres',
+        password,
+        database,
         ssl,
       }),
-      label: `${host}:${process.env.PGPORT || 5432}`,
+      label: `host montado (${host}:${port})`,
     };
   }
 
   throw new Error(
-    'Variável de conexão com o PostgreSQL ausente (defina DATABASE_URL ou PGHOST nas variáveis do serviço na Railway).'
+    'Configuração de banco inválida: defina DATABASE_URL começando por postgres:// ou postgresql://, ou informe host/credenciais válidas sem localhost.'
   );
 }
 
