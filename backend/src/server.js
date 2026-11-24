@@ -474,7 +474,11 @@ app.post('/api/produtos', autenticarAdmin, async (req, res) => {
     return res.status(201).json(mapProdutoRow(result.rows[0]));
   } catch (err) {
     console.error('Erro ao criar produto:', err);
-    return res.status(500).json({ error: 'Erro ao criar produto.' });
+    return res.status(500).json({
+      error: 'Erro ao criar produto.',
+      detail: err.message,
+      code: err.code || null,
+    });
   }
 });
 

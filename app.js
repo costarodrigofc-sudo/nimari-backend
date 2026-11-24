@@ -541,7 +541,7 @@ window.nimariCriarProduto = nimariCriarProduto;
           });
           const prodData = await prodRes.json();
           if (!prodRes.ok) {
-            throw new Error(prodData.error || 'Falha ao cadastrar produto.');
+            throw new Error(prodData.detail || prodData.error || 'Falha ao cadastrar produto.');
           }
 
           statusEl.textContent = `Produto cadastrado com sucesso! ID: ${prodData.id}`;
