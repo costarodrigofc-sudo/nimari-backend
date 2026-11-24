@@ -359,7 +359,7 @@ function parsePriceValue(value) {
 }
 
 // ==========================================
-// INICIALIZAÇÃO DO BANCO DE DADOS
+// INICIALIZAÇÃO E REPARO DO SCHEMA DO BANCO
 // ==========================================
 async function initDatabase() {
   const client = await pool.connect();
@@ -371,6 +371,7 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY,
         uid TEXT,
         name TEXT NOT NULL,
+        nome TEXT,
         descricao TEXT DEFAULT '',
         categoria TEXT DEFAULT 'cosmeticos',
         imagem TEXT DEFAULT '',
@@ -384,22 +385,32 @@ async function initDatabase() {
 
     await client.query(`
       ALTER TABLE produtos
+        ADD COLUMN IF NOT EXISTS uid TEXT,
+        ADD COLUMN IF NOT EXISTS name TEXT,
+        ADD COLUMN IF NOT EXISTS nome TEXT,
+        ADD COLUMN IF NOT EXISTS descricao TEXT DEFAULT '',
         ADD COLUMN IF NOT EXISTS categoria TEXT DEFAULT 'cosmeticos',
         ADD COLUMN IF NOT EXISTS imagem TEXT DEFAULT '',
-        ADD COLUMN IF NOT EXISTS imagens JSONB DEFAULT '[]'::jsonb;
+        ADD COLUMN IF NOT EXISTS imagens JSONB DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS price TEXT,
+        ADD COLUMN IF NOT EXISTS preco NUMERIC(12, 2) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW(),
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
     `);
 
     await client.query(`
       DO $$
       BEGIN
-        IF NOT EXISTS (
-          SELECT 1
-          FROM information_schema.columns
-          WHERE table_schema = 'public'
-            AND table_name = 'produtos'
-            AND column_name = 'preco'
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'produtos' AND column_name = 'name'
+        ) AND EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'produtos' AND column_name = 'nome'
         ) THEN
-          ALTER TABLE produtos ADD COLUMN preco NUMERIC(12, 2);
+          UPDATE produtos
+          SET name = COALESCE(NULLIF(TRIM(name), ''), NULLIF(TRIM(nome), ''), 'Produto'),
+              nome = COALESCE(NULLIF(TRIM(nome), ''), NULLIF(TRIM(name), ''), 'Produto');
         END IF;
 
         IF EXISTS (
@@ -407,34 +418,42 @@ async function initDatabase() {
           FROM information_schema.columns
           WHERE table_schema = 'public'
             AND table_name = 'produtos'
-            AND column_name = 'price'
+            AND column_name = 'preco'
         ) THEN
-          UPDATE produtos
-          SET preco = COALESCE(
-            preco,
-            NULLIF(
-              regexp_replace(
-                replace(COALESCE(price::text, ''), ',', '.'),
-                '[^0-9.-]',
-                '',
-                'g'
-              ),
-              ''
-            )::numeric,
-            0::numeric
-          )
-          WHERE preco IS NULL;
-        ELSE
-          UPDATE produtos
-          SET preco = 0::numeric
-          WHERE preco IS NULL;
-        END IF;
+          IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'produtos'
+              AND column_name = 'price'
+          ) THEN
+            UPDATE produtos
+            SET preco = COALESCE(
+              preco,
+              NULLIF(
+                regexp_replace(
+                  replace(COALESCE(price::text, ''), ',', '.'),
+                  '[^0-9.-]',
+                  '',
+                  'g'
+                ),
+                ''
+              )::numeric,
+              0::numeric
+            )
+            WHERE preco IS NULL;
+          ELSE
+            UPDATE produtos
+            SET preco = 0::numeric
+            WHERE preco IS NULL;
+          END IF;
 
-        ALTER TABLE produtos
-          ALTER COLUMN preco TYPE NUMERIC(12, 2)
-          USING COALESCE(preco, 0::numeric),
-          ALTER COLUMN preco SET DEFAULT 0,
-          ALTER COLUMN preco SET NOT NULL;
+          ALTER TABLE produtos
+            ALTER COLUMN preco TYPE NUMERIC(12, 2)
+            USING COALESCE(preco, 0::numeric),
+            ALTER COLUMN preco SET DEFAULT 0,
+            ALTER COLUMN preco SET NOT NULL;
+        END IF;
       END $$;
     `);
 
@@ -630,30 +649,58 @@ app.post('/api/produtos', requireAdmin, async (req, res) => {
         : [];
     const imagemPrincipal = String(body.imagem || imagensArr[0] || '').trim();
 
+    const colsRes = await pool.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'produtos'
+    `);
+    const existingCols = new Set(colsRes.rows.map((r) => r.column_name));
+
+    const insertCols = [];
+    const insertVals = [];
+    const placeholders = [];
+
+    const pushCol = (col, val) => {
+      if (existingCols.has(col)) {
+        insertCols.push(col);
+        insertVals.push(val);
+        placeholders.push(`$${insertVals.length}`);
+      }
+    };
+
+    pushCol('uid', body.uid || null);
+    pushCol('name', nomeFinal);
+    pushCol('nome', nomeFinal);
+    pushCol('descricao', descricao);
+    pushCol('categoria', categoria);
+    pushCol('imagem', imagemPrincipal);
+    pushCol('imagens', JSON.stringify(imagensArr));
+    pushCol('price', priceTexto);
+    pushCol('preco', precoNormalizado);
+
+    if (insertCols.length === 0) {
+      throw new Error('Tabela produtos sem colunas compatíveis.');
+    }
+
     const result = await pool.query(
-      `INSERT INTO produtos (uid, name, descricao, categoria, imagem, imagens, price, preco)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
+      `INSERT INTO produtos (${insertCols.join(', ')})
+       VALUES (${placeholders.join(', ')})
        RETURNING *`,
-      [
-        body.uid || null,
-        nomeFinal,
-        descricao,
-        categoria,
-        imagemPrincipal,
-        JSON.stringify(imagensArr),
-        priceTexto,
-        precoNormalizado,
-      ]
+      insertVals
     );
 
     const created = result.rows[0];
     res.status(201).json({
       ...created,
-      nome: created.name,
+      name: created.name || created.nome || nomeFinal,
+      nome: created.nome || created.name || nomeFinal,
     });
   } catch (err) {
     console.error('Erro ao criar produto:', err);
-    res.status(500).json({ error: 'Erro interno ao criar produto.' });
+    res.status(500).json({
+      error: 'Erro interno ao criar produto.',
+      detail: err.message,
+    });
   }
 });
 
