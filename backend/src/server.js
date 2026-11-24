@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
@@ -24,6 +25,7 @@ app.set('trust proxy', 1);
 // ==========================================
 app.use(
   helmet({
+    contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
@@ -31,7 +33,7 @@ app.use(compression());
 
 const allowedOrigins = String(
   process.env.ALLOWED_ORIGINS ||
-    'https://www.nimari.com.br,https://nimari.com.br,http://localhost:3000,http://localhost:5173'
+    'https://www.nimari.com.br,https://nimari.com.br,https://nimari-backend-production.up.railway.app,http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5500'
 )
   .split(',')
   .map((o) => o.trim())
@@ -321,17 +323,18 @@ function toNumberPrice(val) {
 }
 
 function mapProdutoRow(row) {
+  const imagens = Array.isArray(row.imagens) ? row.imagens : [];
   return {
     id: row.id,
-    nome: row.nome,
+    nome: row.nome || row.titulo || row.title || 'Produto NIMARI',
     descricao: row.descricao || '',
     preco: Number(row.preco) || 0,
     precoAntigo:
       row.preco_antigo !== null && row.preco_antigo !== undefined ? Number(row.preco_antigo) : null,
     categoria: row.categoria || 'cosmeticos',
     subcategoria: row.subcategoria || 'outros-cosm',
-    imagem: row.imagem || '',
-    imagens: Array.isArray(row.imagens) ? row.imagens : [],
+    imagem: row.imagem || imagens[0] || '',
+    imagens,
     badge: row.badge || 'none',
     wpp: row.wpp || '',
     mp_link: row.mp_link || '',
@@ -705,6 +708,24 @@ app.put('/api/config', autenticarAdmin, async (req, res) => {
     console.error('Erro ao salvar configurações:', err);
     return res.status(500).json({ error: 'Erro ao salvar configurações.' });
   }
+});
+
+// ==========================================
+// FRONT-END ESTÁTICO (RAIZ DO PROJETO)
+// ==========================================
+const publicDir = path.join(__dirname, '..', '..');
+
+app.use(
+  express.static(publicDir, {
+    index: 'index.html',
+    extensions: ['html'],
+  })
+);
+
+app.use('/backend', (_req, res) => res.status(404).end());
+
+app.get(/^\/(?!api\/).*/, (_req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
 });
 
 // ==========================================
