@@ -116,7 +116,7 @@ async function initDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS produtos (
       id TEXT PRIMARY KEY,
-      nome TEXT NOT NULL,
+      nome TEXT NOT NULL DEFAULT '',
       descricao TEXT NOT NULL DEFAULT '',
       preco NUMERIC(12, 2) NOT NULL DEFAULT 0,
       preco_antigo NUMERIC(12, 2),
@@ -131,6 +131,7 @@ async function initDatabase() {
       created_at BIGINT NOT NULL DEFAULT 0
     );
 
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS nome TEXT NOT NULL DEFAULT '';
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS descricao TEXT NOT NULL DEFAULT '';
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_antigo NUMERIC(12, 2);
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS categoria TEXT NOT NULL DEFAULT 'cosmeticos';
@@ -142,6 +143,25 @@ async function initDatabase() {
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS mp_link TEXT NOT NULL DEFAULT '';
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS vendas INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0;
+
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'produtos' AND column_name = 'titulo'
+      ) THEN
+        EXECUTE 'ALTER TABLE produtos ALTER COLUMN titulo DROP NOT NULL';
+        EXECUTE 'UPDATE produtos SET nome = COALESCE(NULLIF(nome, ''''), NULLIF(titulo, ''''), ''Produto NIMARI'')';
+      END IF;
+
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'produtos' AND column_name = 'title'
+      ) THEN
+        EXECUTE 'ALTER TABLE produtos ALTER COLUMN title DROP NOT NULL';
+        EXECUTE 'UPDATE produtos SET nome = COALESCE(NULLIF(nome, ''''), NULLIF(title, ''''), ''Produto NIMARI'')';
+      END IF;
+    END $$;
 
     CREATE TABLE IF NOT EXISTS depoimentos (
       id TEXT PRIMARY KEY,
@@ -178,7 +198,6 @@ async function initDatabase() {
     ON CONFLICT (id) DO NOTHING;
   `);
 }
-
 // ==========================================
 // CLIENTE CLOUDFLARE R2 (BUCKET: nimari-midia)
 // ==========================================
