@@ -1,4 +1,5 @@
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -6,13 +7,12 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/**
- * Monta o Pool do PostgreSQL com segurança:
- * 1. Só usa connectionString se começar por postgres:// ou postgresql://.
- * 2. Se vier apenas host:porta (ex.: kodama.proxy.rlwy.net:56955), extrai o host e a porta
- *    e monta a conexão usando POSTGRES_USER/DB_USER, POSTGRES_PASSWORD/DB_PASS e POSTGRES_DB/DB_NAME.
- * 3. Nunca cai em localhost se houver credenciais/host válidos; se faltar configuração válida, lança erro explícito.
- */
+const ADMIN_API_KEY = String(process.env.ADMIN_API_KEY || '').trim();
+const JWT_SECRET = String(process.env.JWT_SECRET || ADMIN_API_KEY || 'nimari-dev-secret').trim();
+
+// ==========================================
+// CONEXÃO COM POSTGRESQL
+// ==========================================
 function buildPool() {
   const user = (process.env.POSTGRES_USER || process.env.DB_USER || '').trim();
   const password = process.env.POSTGRES_PASSWORD ?? process.env.DB_PASS ?? '';
@@ -96,13 +96,75 @@ function buildPool() {
 
 const { pool, label: dbLabel } = buildPool();
 
-app.use(cors());
-app.use(express.json());
+// ==========================================
+// AUTENTICAÇÃO ADMIN (TOKEN ASSINADO COM HMAC)
+// ==========================================
+function signAdminToken() {
+  const payload = Buffer.from(
+    JSON.stringify({
+      role: 'admin',
+      iat: Date.now(),
+      exp: Date.now() + 1000 * 60 * 60 * 24 * 7,
+    })
+  ).toString('base64url');
+  const sig = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update(payload)
+    .digest('base64url');
+  return `${payload}.${sig}`;
+}
 
-// Caminho para a raiz do projeto onde estão index.html, produto.html, app.js, styles.css e favicon_io
+function verifyAdminToken(token) {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  const [payload, sig] = parts;
+  const expectedSig = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update(payload)
+    .digest('base64url');
+
+  const sigBuf = Buffer.from(sig);
+  const expBuf = Buffer.from(expectedSig);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+    return false;
+  }
+
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!data || data.role !== 'admin') return false;
+    if (typeof data.exp === 'number' && Date.now() > data.exp) return false;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function requireAdmin(req, res, next) {
+  const authHeader = String(req.headers.authorization || '').trim();
+  const bearerToken = authHeader.toLowerCase().startsWith('bearer ')
+    ? authHeader.slice(7).trim()
+    : '';
+  const apiKeyHeader = String(req.headers['x-admin-key'] || '').trim();
+
+  if (verifyAdminToken(bearerToken)) {
+    return next();
+  }
+  if (ADMIN_API_KEY && (bearerToken === ADMIN_API_KEY || apiKeyHeader === ADMIN_API_KEY)) {
+    return next();
+  }
+
+  return res.status(401).json({ error: 'Não autorizado. Faça o login administrativo.' });
+}
+
+// ==========================================
+// MIDDLEWARES E ARQUIVOS ESTÁTICOS DO FRONTEND
+// ==========================================
+app.use(cors());
+app.use(express.json({ limit: '15mb' }));
+
 const PUBLIC_ROOT = path.resolve(__dirname, '..', '..');
 
-// Bloqueia acesso direto a ficheiros sensíveis ou pastas internas do backend
 app.use((req, res, next) => {
   const blocked = /^\/(backend|\.env|\.git|package(-lock)?\.json)/i;
   if (blocked.test(req.path)) {
@@ -111,7 +173,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve os ficheiros estáticos do frontend da NIMARI (index.html, produto.html, app.js, styles.css, favicon_io)
 app.use(express.static(PUBLIC_ROOT, { index: 'index.html' }));
 
 function parsePriceValue(value) {
@@ -130,6 +191,9 @@ function parsePriceValue(value) {
   return 0;
 }
 
+// ==========================================
+// INICIALIZAÇÃO DO BANCO DE DADOS
+// ==========================================
 async function initDatabase() {
   const client = await pool.connect();
   try {
@@ -141,11 +205,21 @@ async function initDatabase() {
         uid TEXT,
         name TEXT NOT NULL,
         descricao TEXT DEFAULT '',
+        categoria TEXT DEFAULT 'cosmeticos',
+        imagem TEXT DEFAULT '',
+        imagens JSONB DEFAULT '[]'::jsonb,
         price TEXT,
         preco NUMERIC(12, 2) DEFAULT 0,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
+    `);
+
+    await client.query(`
+      ALTER TABLE produtos
+        ADD COLUMN IF NOT EXISTS categoria TEXT DEFAULT 'cosmeticos',
+        ADD COLUMN IF NOT EXISTS imagem TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS imagens JSONB DEFAULT '[]'::jsonb;
     `);
 
     await client.query(`
@@ -197,6 +271,33 @@ async function initDatabase() {
       END $$;
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS loja_config (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        wpp_number TEXT DEFAULT '',
+        about_image TEXT DEFAULT '',
+        hidden_categories JSONB DEFAULT '[]'::jsonb,
+        brands JSONB DEFAULT '[]'::jsonb,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    await client.query(`
+      INSERT INTO loja_config (id, wpp_number, about_image, hidden_categories, brands)
+      VALUES (1, '', '', '[]'::jsonb, '[]'::jsonb)
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS depoimentos (
+        id SERIAL PRIMARY KEY,
+        autor TEXT NOT NULL,
+        mensagem TEXT NOT NULL,
+        avaliacao INTEGER DEFAULT 5,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
@@ -206,6 +307,9 @@ async function initDatabase() {
   }
 }
 
+// ==========================================
+// ROTAS DE SAÚDE E AUTENTICAÇÃO
+// ==========================================
 app.get('/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -215,6 +319,95 @@ app.get('/health', async (_req, res) => {
   }
 });
 
+app.post('/api/auth/login', (req, res) => {
+  const password = String(req.body?.password || '').trim();
+
+  if (!ADMIN_API_KEY) {
+    return res.status(500).json({
+      error: 'ADMIN_API_KEY não configurada no servidor.',
+    });
+  }
+
+  if (!password) {
+    return res.status(400).json({ error: 'Digite a senha de acesso.' });
+  }
+
+  if (password !== ADMIN_API_KEY) {
+    return res.status(401).json({ error: 'Senha incorreta. Tente novamente.' });
+  }
+
+  const token = signAdminToken();
+  return res.status(200).json({ ok: true, token });
+});
+
+// ==========================================
+// ROTAS DE CONFIGURAÇÃO E DEPOIMENTOS
+// ==========================================
+app.get('/api/config', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM loja_config WHERE id = 1');
+    const row = result.rows[0] || {};
+    res.json({
+      wppNumber: row.wpp_number || process.env.WPP_NUMBER || '',
+      aboutImage: row.about_image || '',
+      hiddenCategories: Array.isArray(row.hidden_categories) ? row.hidden_categories : [],
+      brands: Array.isArray(row.brands) ? row.brands : [],
+    });
+  } catch (err) {
+    console.error('Erro ao buscar config:', err);
+    res.status(500).json({ error: 'Erro ao carregar configurações.' });
+  }
+});
+
+app.put('/api/config', requireAdmin, async (req, res) => {
+  try {
+    const { wppNumber, aboutImage, hiddenCategories, brands } = req.body || {};
+    const hiddenArr = Array.isArray(hiddenCategories) ? hiddenCategories : [];
+    const brandsArr = Array.isArray(brands) ? brands : [];
+
+    const result = await pool.query(
+      `UPDATE loja_config
+       SET wpp_number = COALESCE($1, wpp_number),
+           about_image = COALESCE($2, about_image),
+           hidden_categories = $3::jsonb,
+           brands = $4::jsonb,
+           updated_at = NOW()
+       WHERE id = 1
+       RETURNING *`,
+      [
+        wppNumber !== undefined ? String(wppNumber) : null,
+        aboutImage !== undefined ? String(aboutImage) : null,
+        JSON.stringify(hiddenArr),
+        JSON.stringify(brandsArr),
+      ]
+    );
+
+    const row = result.rows[0] || {};
+    res.json({
+      wppNumber: row.wpp_number || '',
+      aboutImage: row.about_image || '',
+      hiddenCategories: Array.isArray(row.hidden_categories) ? row.hidden_categories : [],
+      brands: Array.isArray(row.brands) ? row.brands : [],
+    });
+  } catch (err) {
+    console.error('Erro ao salvar config:', err);
+    res.status(500).json({ error: 'Erro ao salvar configurações.' });
+  }
+});
+
+app.get('/api/depoimentos', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM depoimentos ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Erro ao buscar depoimentos:', err);
+    res.status(500).json({ error: 'Erro ao carregar depoimentos.' });
+  }
+});
+
+// ==========================================
+// ROTAS DE PRODUTOS
+// ==========================================
 app.get('/api/produtos', async (_req, res) => {
   try {
     const result = await pool.query('SELECT * FROM produtos ORDER BY id ASC');
@@ -225,32 +418,65 @@ app.get('/api/produtos', async (_req, res) => {
   }
 });
 
-app.post('/api/produtos', async (req, res) => {
+app.post('/api/produtos', requireAdmin, async (req, res) => {
   try {
-    const { uid, name, descricao, price, preco } = req.body;
-    const precoNormalizado = parsePriceValue(
-      preco !== undefined && preco !== null && preco !== '' ? preco : price
-    );
+    const body = req.body || {};
+    const nomeFinal = String(body.name ?? body.nome ?? '').trim();
+    if (!nomeFinal) {
+      return res.status(400).json({ error: 'O nome do produto é obrigatório.' });
+    }
+
+    const rawPriceInput =
+      body.preco !== undefined && body.preco !== null && String(body.preco).trim() !== ''
+        ? body.preco
+        : body.price;
+
+    const precoNormalizado = parsePriceValue(rawPriceInput);
     const priceTexto =
-      price !== undefined && price !== null
-        ? String(price)
+      rawPriceInput !== undefined && rawPriceInput !== null && String(rawPriceInput).trim() !== ''
+        ? String(rawPriceInput)
         : precoNormalizado.toFixed(2).replace('.', ',');
 
+    const categoria = String(body.categoria || 'cosmeticos').trim() || 'cosmeticos';
+    const descricao = String(body.descricao || '').trim();
+    const imagensArr = Array.isArray(body.imagens)
+      ? body.imagens.filter(Boolean)
+      : body.imagem
+        ? [String(body.imagem)]
+        : [];
+    const imagemPrincipal = String(body.imagem || imagensArr[0] || '').trim();
+
     const result = await pool.query(
-      `INSERT INTO produtos (uid, name, descricao, price, preco)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO produtos (uid, name, descricao, categoria, imagem, imagens, price, preco)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
        RETURNING *`,
-      [uid || null, name, descricao || '', priceTexto, precoNormalizado]
+      [
+        body.uid || null,
+        nomeFinal,
+        descricao,
+        categoria,
+        imagemPrincipal,
+        JSON.stringify(imagensArr),
+        priceTexto,
+        precoNormalizado,
+      ]
     );
 
-    res.status(201).json(result.rows[0]);
+    const created = result.rows[0];
+    // Inclui alias "nome" além de "name" para compatibilidade com qualquer consumidor do frontend
+    res.status(201).json({
+      ...created,
+      nome: created.name,
+    });
   } catch (err) {
     console.error('Erro ao criar produto:', err);
     res.status(500).json({ error: 'Erro interno ao criar produto.' });
   }
 });
 
-// Rotas explícitas das páginas HTML da loja NIMARI
+// ==========================================
+// PÁGINAS HTML DA LOJA NIMARI
+// ==========================================
 app.get('/', (_req, res) => {
   res.sendFile(path.join(PUBLIC_ROOT, 'index.html'));
 });
