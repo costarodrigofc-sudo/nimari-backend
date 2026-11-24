@@ -133,6 +133,7 @@ async function initDatabase() {
 
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS nome TEXT NOT NULL DEFAULT '';
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS descricao TEXT NOT NULL DEFAULT '';
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco NUMERIC(12, 2) NOT NULL DEFAULT 0;
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_antigo NUMERIC(12, 2);
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS categoria TEXT NOT NULL DEFAULT 'cosmeticos';
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS subcategoria TEXT NOT NULL DEFAULT 'outros-cosm';
@@ -160,6 +161,14 @@ async function initDatabase() {
       ) THEN
         EXECUTE 'ALTER TABLE produtos ALTER COLUMN title DROP NOT NULL';
         EXECUTE 'UPDATE produtos SET nome = COALESCE(NULLIF(nome, ''''), NULLIF(title, ''''), ''Produto NIMARI'')';
+      END IF;
+
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'produtos' AND column_name = 'price'
+      ) THEN
+        EXECUTE 'ALTER TABLE produtos ALTER COLUMN price DROP NOT NULL';
+        EXECUTE 'UPDATE produtos SET preco = COALESCE(preco, price, 0)';
       END IF;
     END $$;
 
@@ -198,6 +207,59 @@ async function initDatabase() {
     ON CONFLICT (id) DO NOTHING;
   `);
 }
+
+app.post('/api/produtos', autenticarAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const nome = String(body.nome || '').trim();
+    if (!nome) {
+      return res.status(400).json({ error: 'Nome do produto é obrigatório.' });
+    }
+
+    const id = String(body.id || `prod-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`);
+    const preco = toNumberPrice(body.preco);
+    const precoAntigo =
+      body.precoAntigo !== undefined && body.precoAntigo !== null && body.precoAntigo !== ''
+        ? toNumberPrice(body.precoAntigo)
+        : null;
+    const imagens = Array.isArray(body.imagens) ? body.imagens.filter(Boolean) : [];
+    const imagem = String(body.imagem || imagens[0] || '').trim();
+    const createdAt = Number(body.createdAt) || Date.now();
+
+    const result = await pool.query(
+      `INSERT INTO produtos (
+        id, nome, descricao, preco, preco_antigo, categoria, subcategoria,
+        imagem, imagens, badge, wpp, mp_link, vendas, created_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14)
+      RETURNING *`,
+      [
+        id,
+        nome,
+        String(body.descricao || '').trim(),
+        preco,
+        precoAntigo,
+        String(body.categoria || 'cosmeticos').trim(),
+        String(body.subcategoria || 'outros-cosm').trim(),
+        imagem,
+        JSON.stringify(imagens),
+        String(body.badge || 'none').trim(),
+        String(body.wpp || '').replace(/\D+/g, ''),
+        String(body.mp_link || '').trim(),
+        Number(body.vendas) || 0,
+        createdAt,
+      ]
+    );
+
+    return res.status(201).json(mapProdutoRow(result.rows[0]));
+  } catch (err) {
+    console.error('Erro ao criar produto:', err);
+    return res.status(500).json({
+      error: 'Erro ao criar produto.',
+      detail: err.message,
+      code: err.code || null,
+    });
+  }
+});
 // ==========================================
 // CLIENTE CLOUDFLARE R2 (BUCKET: nimari-midia)
 // ==========================================
