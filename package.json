@@ -1,0 +1,9 @@
+{
+  "name": "nimari-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix backend install",
+    "start": "node backend/src/server.js"
+  }
+}
