@@ -46,7 +46,7 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-migrate-secret'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
@@ -160,13 +160,10 @@ function autenticarAdmin(req, res, next) {
     return res.status(401).json({ error: 'Token de autenticação ausente.' });
   }
 
-  // Se já existir validação JWT ou sessão no teu projeto, mantém aqui;
-  // caso o token seja uma chave administrativa configurada em ADMIN_API_KEY:
   if (process.env.ADMIN_API_KEY && token === process.env.ADMIN_API_KEY) {
     return next();
   }
 
-  // Fallback compatível caso o teu sistema valide JWT/sessão adiante ou via header
   if (token.length >= 16) {
     return next();
   }
@@ -221,163 +218,6 @@ app.post('/api/upload', autenticarAdmin, upload.single('file'), async (req, res)
   } catch (err) {
     console.error('Erro no /api/upload:', err);
     return res.status(500).json({ error: err.message || 'Erro ao enviar imagem para o R2.' });
-  }
-});
-
-// ==========================================
-// ROTA TEMPORÁRIA DE MIGRAÇÃO SUPABASE -> R2
-// Remover este endpoint após concluir a migração.
-// ==========================================
-// ==========================================
-// ROTA TEMPORÁRIA DE MIGRAÇÃO SUPABASE -> R2
-// Remover este endpoint após concluir a migração.
-// ==========================================
-app.post('/api/admin/migrar-r2', async (req, res) => {
-  try {
-    const secret = req.headers['x-migrate-secret'] || req.body?.secret;
-    if (!process.env.MIGRATE_SECRET || secret !== process.env.MIGRATE_SECRET) {
-      return res.status(401).json({ error: 'Não autorizado.' });
-    }
-
-    const dryRun = Boolean(req.body?.dryRun);
-    const { client, bucket, publicUrl } = criarClienteR2();
-    const cache = new Map();
-    const migrados = [];
-    const erros = [];
-
-    const ehSupabase = (url) => typeof url === 'string' && url.includes('supabase.co');
-
-    async function migrarUrl(urlAntiga, pasta, slug, indice) {
-      if (!ehSupabase(urlAntiga)) return urlAntiga;
-      if (cache.has(urlAntiga)) return cache.get(urlAntiga);
-
-      const key = `${pasta}/${slug}-${indice}-${Date.now()}.webp`;
-      const novaUrl = `${publicUrl}/${key}`;
-
-      if (dryRun) {
-        cache.set(urlAntiga, novaUrl);
-        migrados.push({ de: urlAntiga, para: novaUrl, dryRun: true });
-        return novaUrl;
-      }
-
-      try {
-        const resposta = await fetch(urlAntiga, {
-          headers: { 'User-Agent': 'Mozilla/5.0 NIMARI-Migrator/1.0' },
-        });
-        if (!resposta.ok) {
-          throw new Error(`HTTP ${resposta.status} (${resposta.statusText})`);
-        }
-        const originalBuffer = Buffer.from(await resposta.arrayBuffer());
-        const webpBuffer = await bufferParaWebp(originalBuffer);
-
-        await client.send(
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: key,
-            Body: webpBuffer,
-            ContentType: 'image/webp',
-            CacheControl: 'public, max-age=31536000, immutable',
-          })
-        );
-
-        cache.set(urlAntiga, novaUrl);
-        migrados.push({ de: urlAntiga, para: novaUrl, dryRun: false });
-        return novaUrl;
-      } catch (err) {
-        const detalhe = err?.cause?.code || err?.cause?.message || err?.message || 'Erro desconhecido';
-        console.error(`Falha ao migrar ${urlAntiga}:`, detalhe);
-        erros.push({ url: urlAntiga, erro: detalhe });
-        return urlAntiga;
-      }
-    }
-
-    // 1. Produtos
-    const { rows: produtos } = await pool.query('SELECT id, uid, name, img, imagens FROM produtos');
-    for (const prod of produtos) {
-      const slug = criarSlug(prod.name || prod.uid || `produto-${prod.id}`);
-      let alterou = false;
-      let novaImg = prod.img || '';
-
-      if (ehSupabase(novaImg)) {
-        const resImg = await migrarUrl(novaImg, 'produtos', slug, 1);
-        if (resImg !== novaImg) {
-          novaImg = resImg;
-          alterou = true;
-        }
-      }
-
-      const galeriaAtual = Array.isArray(prod.imagens) ? prod.imagens : [];
-      const novaGaleria = [];
-
-      for (let i = 0; i < galeriaAtual.length; i++) {
-        const atual = galeriaAtual[i];
-        if (ehSupabase(atual)) {
-          const resGal = await migrarUrl(atual, 'produtos', slug, i + 2);
-          novaGaleria.push(resGal);
-          if (resGal !== atual) alterou = true;
-        } else {
-          novaGaleria.push(atual);
-        }
-      }
-
-      if (alterou && !dryRun) {
-        await pool.query(
-          'UPDATE produtos SET img = $1, imagens = $2, updated_at = NOW() WHERE id = $3',
-          [novaImg, novaGaleria, prod.id]
-        );
-      }
-    }
-
-    // 2. Marcas
-    const { rows: marcas } = await pool.query('SELECT id, nome, logo_url FROM marcas');
-    for (const marca of marcas) {
-      if (ehSupabase(marca.logo_url)) {
-        const novaLogo = await migrarUrl(marca.logo_url, 'marcas', criarSlug(marca.nome), 1);
-        if (!dryRun && novaLogo !== marca.logo_url) {
-          await pool.query('UPDATE marcas SET logo_url = $1 WHERE id = $2', [novaLogo, marca.id]);
-        }
-      }
-    }
-
-    // 3. Depoimentos
-    const { rows: depoimentos } = await pool.query('SELECT id, nome, avatar FROM depoimentos');
-    for (const dep of depoimentos) {
-      if (ehSupabase(dep.avatar)) {
-        const novoAvatar = await migrarUrl(dep.avatar, 'depoimentos', criarSlug(dep.nome), 1);
-        if (!dryRun && novoAvatar !== dep.avatar) {
-          await pool.query('UPDATE depoimentos SET avatar = $1 WHERE id = $2', [novoAvatar, dep.id]);
-        }
-      }
-    }
-
-    // 4. Configurações
-    const { rows: configs } = await pool.query('SELECT chave, valor FROM configuracoes');
-    for (const cfg of configs) {
-      if (ehSupabase(cfg.valor)) {
-        const novoValor = await migrarUrl(cfg.valor, 'config', criarSlug(cfg.chave), 1);
-        if (!dryRun && novoValor !== cfg.valor) {
-          await pool.query('UPDATE configuracoes SET valor = $1, updated_at = NOW() WHERE chave = $2', [
-            novoValor,
-            cfg.chave,
-          ]);
-        }
-      }
-    }
-
-    return res.json({
-      ok: true,
-      dryRun,
-      totalConvertidas: migrados.length,
-      totalErros: erros.length,
-      migrados,
-      erros,
-    });
-  } catch (err) {
-    console.error('Erro na migração R2:', err);
-    return res.status(500).json({
-      error: err.message || 'Erro interno durante a migração para o R2.',
-      detalhe: err?.cause?.code || err?.cause?.message || null,
-    });
   }
 });
 
