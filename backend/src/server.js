@@ -358,6 +358,16 @@ function parsePriceValue(value) {
   return 0;
 }
 
+// Formata arrays para o tipo PostgreSQL correspondente (text[]/jsonb vs jsonb)
+function formatPgArrayOrJson(val, udtName, dataType) {
+  const arr = Array.isArray(val) ? val.filter((x) => x !== null && x !== undefined).map(String) : [];
+  if (dataType === 'ARRAY' || String(udtName || '').startsWith('_')) {
+    const escaped = arr.map((item) => `"${item.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
+    return `{${escaped.join(',')}}`;
+  }
+  return JSON.stringify(arr);
+}
+
 // ==========================================
 // INICIALIZAÇÃO E REPARO DO SCHEMA DO BANCO
 // ==========================================
@@ -650,22 +660,29 @@ app.post('/api/produtos', requireAdmin, async (req, res) => {
     const imagemPrincipal = String(body.imagem || imagensArr[0] || '').trim();
 
     const colsRes = await pool.query(`
-      SELECT column_name
+      SELECT column_name, data_type, udt_name
       FROM information_schema.columns
       WHERE table_schema = 'public' AND table_name = 'produtos'
     `);
-    const existingCols = new Set(colsRes.rows.map((r) => r.column_name));
+    const colMeta = new Map(colsRes.rows.map((r) => [r.column_name, r]));
 
     const insertCols = [];
     const insertVals = [];
     const placeholders = [];
 
-    const pushCol = (col, val) => {
-      if (existingCols.has(col)) {
-        insertCols.push(col);
-        insertVals.push(val);
-        placeholders.push(`$${insertVals.length}`);
+    const pushCol = (col, val, isArrayField = false) => {
+      const meta = colMeta.get(col);
+      if (!meta) return;
+
+      let formattedVal = val;
+      if (isArrayField) {
+        formattedVal = formatPgArrayOrJson(val, meta.udt_name, meta.data_type);
       }
+
+      insertCols.push(col);
+      insertVals.push(formattedVal);
+      const cast = !isArrayField && meta.udt_name === 'jsonb' ? '::jsonb' : '';
+      placeholders.push(`$${insertVals.length}${cast}`);
     };
 
     pushCol('uid', body.uid || null);
@@ -674,7 +691,7 @@ app.post('/api/produtos', requireAdmin, async (req, res) => {
     pushCol('descricao', descricao);
     pushCol('categoria', categoria);
     pushCol('imagem', imagemPrincipal);
-    pushCol('imagens', JSON.stringify(imagensArr));
+    pushCol('imagens', imagensArr, true);
     pushCol('price', priceTexto);
     pushCol('preco', precoNormalizado);
 
