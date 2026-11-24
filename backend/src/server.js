@@ -5,73 +5,68 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-function resolveDatabaseConfig() {
+function buildPool() {
   const connectionString =
     process.env.DATABASE_URL ||
     process.env.DATABASE_PRIVATE_URL ||
-    process.env.POSTGRES_URL ||
-    '';
+    process.env.DATABASE_PUBLIC_URL ||
+    process.env.POSTGRES_URL;
 
-  const useSsl =
-    process.env.DATABASE_SSL === 'false'
-      ? false
-      : process.env.DATABASE_SSL === 'true' ||
-          process.env.NODE_ENV === 'production' ||
-          Boolean(connectionString && !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1'));
+  if (connectionString && connectionString.trim() !== '') {
+    const trimmed = connectionString.trim();
+    const isLocal =
+      trimmed.includes('localhost') ||
+      trimmed.includes('127.0.0.1') ||
+      trimmed.includes('::1');
 
-  const sslConfig = useSsl ? { rejectUnauthorized: false } : false;
+    const ssl =
+      process.env.DATABASE_SSL === 'false'
+        ? false
+        : process.env.DATABASE_SSL === 'true' || !isLocal
+          ? { rejectUnauthorized: false }
+          : false;
 
-  if (connectionString) {
     return {
-      source: process.env.DATABASE_URL
-        ? 'DATABASE_URL'
-        : process.env.DATABASE_PRIVATE_URL
-          ? 'DATABASE_PRIVATE_URL'
-          : 'POSTGRES_URL',
-      poolConfig: {
-        connectionString,
-        ssl: sslConfig,
-      },
+      pool: new Pool({ connectionString: trimmed, ssl }),
+      label: 'connectionString',
     };
   }
 
-  if (process.env.PGHOST) {
+  if (process.env.PGHOST && process.env.PGHOST.trim() !== '') {
+    const host = process.env.PGHOST.trim();
+    const isLocal =
+      host === 'localhost' || host === '127.0.0.1' || host === '::1';
+
+    const ssl =
+      process.env.DATABASE_SSL === 'false'
+        ? false
+        : process.env.DATABASE_SSL === 'true' || !isLocal
+          ? { rejectUnauthorized: false }
+          : false;
+
     return {
-      source: 'PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE',
-      poolConfig: {
-        host: process.env.PGHOST,
+      pool: new Pool({
+        host,
         port: Number(process.env.PGPORT || 5432),
         user: process.env.PGUSER || 'postgres',
         password: process.env.PGPASSWORD,
         database: process.env.PGDATABASE || 'railway',
-        ssl: sslConfig,
-      },
+        ssl,
+      }),
+      label: `${host}:${process.env.PGPORT || 5432}`,
     };
   }
 
-  return {
-    source: 'fallback_localhost',
-    poolConfig: {
-      host: '127.0.0.1',
-      port: 5432,
-      user: 'postgres',
-      password: process.env.PGPASSWORD || '',
-      database: process.env.PGDATABASE || 'railway',
-      ssl: false,
-    },
-  };
+  throw new Error(
+    'Variável de conexão com o PostgreSQL ausente (defina DATABASE_URL ou PGHOST nas variáveis do serviço na Railway).'
+  );
 }
 
-const dbConfig = resolveDatabaseConfig();
-const pool = new Pool(dbConfig.poolConfig);
+const { pool, label: dbLabel } = buildPool();
 
 app.use(cors());
 app.use(express.json());
 
-/**
- * Converte valores textuais ou numéricos (incluindo vírgula decimal ex: "215,00")
- * para número seguro em JavaScript.
- */
 function parsePriceValue(value) {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
@@ -88,19 +83,7 @@ function parsePriceValue(value) {
   return 0;
 }
 
-/**
- * Inicializa o schema e migra/normaliza a tabela produtos sem erro
- * COALESCE types numeric and text cannot be matched (42804).
- */
 async function initDatabase() {
-  if (dbConfig.source === 'fallback_localhost') {
-    console.warn(
-      'AVISO: Nenhuma variável de base de dados (DATABASE_URL, DATABASE_PRIVATE_URL ou PGHOST) foi encontrada no ambiente. A tentar 127.0.0.1:5432.'
-    );
-  } else {
-    console.log(`A ligar ao PostgreSQL via ${dbConfig.source}...`);
-  }
-
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -168,10 +151,8 @@ async function initDatabase() {
     `);
 
     await client.query('COMMIT');
-    console.log('Banco de dados inicializado e tabela produtos normalizada com sucesso.');
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('Erro ao inicializar o banco de dados:', err);
     throw err;
   } finally {
     client.release();
@@ -223,15 +204,13 @@ app.post('/api/produtos', async (req, res) => {
 });
 
 async function startServer() {
-  try {
-    await initDatabase();
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Servidor rodando na porta ${PORT}`);
-    });
-  } catch (err) {
-    console.error('Falha crítica no arranque do servidor:', err);
-    process.exit(1);
-  }
+  await initDatabase();
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor ativo na porta ${PORT} (${dbLabel})`);
+  });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error('Falha no arranque:', err);
+  process.exit(1);
+});
