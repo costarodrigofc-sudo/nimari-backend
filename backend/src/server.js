@@ -183,6 +183,12 @@ async function initDatabase() {
       created_at BIGINT NOT NULL DEFAULT 0
     );
 
+    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS avatar TEXT NOT NULL DEFAULT '';
+    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS stars INTEGER NOT NULL DEFAULT 5;
+    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS loc TEXT NOT NULL DEFAULT '';
+    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS date TEXT NOT NULL DEFAULT '';
+    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0;
+
     CREATE TABLE IF NOT EXISTS config_site (
       id TEXT PRIMARY KEY DEFAULT 'default',
       wpp_number TEXT NOT NULL DEFAULT '5598985631126',
@@ -191,11 +197,17 @@ async function initDatabase() {
       brands JSONB NOT NULL DEFAULT '[]'::jsonb
     );
 
+    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS wpp_number TEXT NOT NULL DEFAULT '5598985631126';
+    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS about_image TEXT NOT NULL DEFAULT '';
+    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS hidden_categories JSONB NOT NULL DEFAULT '[]'::jsonb;
+    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS brands JSONB NOT NULL DEFAULT '[]'::jsonb;
+
     INSERT INTO config_site (id, wpp_number, about_image, hidden_categories, brands)
     VALUES ('default', '5598985631126', '', '[]'::jsonb, '[]'::jsonb)
     ON CONFLICT (id) DO NOTHING;
   `);
 }
+
 // ==========================================
 // CLIENTE CLOUDFLARE R2 (BUCKET: nimari-midia)
 // ==========================================
