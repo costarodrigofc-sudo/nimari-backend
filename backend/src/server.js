@@ -31,18 +31,28 @@ app.use(
 );
 app.use(compression());
 
-const allowedOrigins = String(
-  process.env.ALLOWED_ORIGINS ||
-    'https://www.nimari.com.br,https://nimari.com.br,https://nimari-backend-production.up.railway.app,http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5500'
-)
+const defaultOrigins = [
+  'https://www.nimari.com.br',
+  'https://nimari.com.br',
+  'https://nimari-backend-production.up.railway.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173',
+  'http://localhost:5500',
+];
+
+const envOrigins = String(process.env.ALLOWED_ORIGINS || '')
   .split(',')
-  .map((o) => o.trim())
+  .map((o) => o.trim().replace(/\/$/, ''))
   .filter(Boolean);
+
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const cleanOrigin = origin ? String(origin).trim().replace(/\/$/, '') : '';
+      if (!cleanOrigin || allowedOrigins.includes(cleanOrigin)) {
         return callback(null, true);
       }
       const err = new Error('Origem não permitida pelo CORS.');
@@ -236,7 +246,7 @@ const upload = multer({
 // ==========================================
 // AUTENTICAÇÃO E SESSÃO ADMIN
 // ==========================================
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
+const ADMIN_API_KEY = String(process.env.ADMIN_API_KEY || '').trim();
 const activeTokens = new Map();
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 
@@ -267,7 +277,7 @@ function tokenSessaoValido(token) {
 
 app.post('/api/auth/login', authLimiter, (req, res) => {
   const { password, apiKey } = req.body || {};
-  const secretInput = typeof password === 'string' && password ? password : apiKey;
+  const secretInput = String((typeof password === 'string' && password ? password : apiKey) || '').trim();
 
   if (!ADMIN_API_KEY) {
     return res.status(503).json({ error: 'ADMIN_API_KEY não configurada no servidor.' });
