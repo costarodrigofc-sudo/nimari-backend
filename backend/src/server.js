@@ -1,966 +1,353 @@
-const path = require('path');
-const crypto = require('crypto');
-const https = require('https');
-const express = require('express');
-const cors = require('cors');
-const { Pool } = require('pg');
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import multer from 'multer';
+import sharp from 'sharp';
+import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import pg from 'pg';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PUBLIC_ROOT = path.resolve(__dirname, '..');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-const ADMIN_API_KEY = String(process.env.ADMIN_API_KEY || '').trim();
-const JWT_SECRET = String(process.env.JWT_SECRET || ADMIN_API_KEY || 'nimari-dev-secret').trim();
-
-const R2_ACCOUNT_ID = String(process.env.R2_ACCOUNT_ID || '').trim();
-const R2_ACCESS_KEY_ID = String(process.env.R2_ACCESS_KEY_ID || '').trim();
-const R2_SECRET_ACCESS_KEY = String(process.env.R2_SECRET_ACCESS_KEY || '').trim();
-const R2_BUCKET_NAME = String(process.env.R2_BUCKET_NAME || 'nimari-midia').trim();
-const R2_PUBLIC_URL = String(process.env.R2_PUBLIC_URL || '').trim().replace(/\/+$/, '');
+const PORT = Number(process.env.PORT || 3000);
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '').trim();
+const JWT_SECRET = String(process.env.JWT_SECRET || ADMIN_PASSWORD || 'nimari-secret-2026').trim();
 
 // ==========================================
-// CONEXÃO COM POSTGRESQL
+// CONEXÃO POSTGRESQL (RAILWAY)
 // ==========================================
-function buildPool() {
-  const user = (process.env.POSTGRES_USER || process.env.DB_USER || '').trim();
-  const password = process.env.POSTGRES_PASSWORD ?? process.env.DB_PASS ?? '';
-  const database = (process.env.POSTGRES_DB || process.env.DB_NAME || 'railway').trim();
-
-  const rawUrl = (
-    process.env.DATABASE_URL ||
-    process.env.DATABASE_PRIVATE_URL ||
-    process.env.DATABASE_PUBLIC_URL ||
-    process.env.POSTGRES_URL ||
-    ''
-  ).trim();
-
-  const isValidProtocol = /^postgres(ql)?:\/\//i.test(rawUrl);
-
-  if (isValidProtocol) {
-    const isLocal = /localhost|127\.0\.0\.1|::1|\[::1\]/i.test(rawUrl);
-    const ssl =
-      process.env.DATABASE_SSL === 'false'
-        ? false
-        : process.env.DATABASE_SSL === 'true' || !isLocal
-          ? { rejectUnauthorized: false }
-          : false;
-
-    return {
-      pool: new Pool({ connectionString: rawUrl, ssl }),
-      label: 'URL completa (postgres://)',
-    };
-  }
-
-  let host = '';
-  let port = Number(process.env.PGPORT || process.env.DB_PORT || 5432);
-
-  if (rawUrl) {
-    const hostPortMatch = rawUrl.match(/^([^/:]+)(?::(\d+))?$/);
-    if (hostPortMatch) {
-      host = hostPortMatch[1].trim();
-      if (hostPortMatch[2]) {
-        port = Number(hostPortMatch[2]);
-      }
-    }
-  }
-
-  if (!host) {
-    const envHost = (process.env.PGHOST || process.env.DB_HOST || '').trim();
-    if (envHost && !/^localhost$|^127\.0\.0\.1$|^::1$/i.test(envHost)) {
-      host = envHost;
-    } else if (envHost) {
-      console.warn(
-        `AVISO: host "${envHost}" ignorado porque aponta para localhost/loopback.`
-      );
-    }
-  }
-
-  if (host) {
-    const isLocal = /^localhost$|^127\.0\.0\.1$|^::1$/i.test(host);
-    const ssl =
-      process.env.DATABASE_SSL === 'false'
-        ? false
-        : process.env.DATABASE_SSL === 'true' || !isLocal
-          ? { rejectUnauthorized: false }
-          : false;
-
-    return {
-      pool: new Pool({
-        host,
-        port: Number.isFinite(port) && port > 0 ? port : 5432,
-        user: user || 'postgres',
-        password,
-        database,
-        ssl,
-      }),
-      label: `host montado (${host}:${port})`,
-    };
-  }
-
-  throw new Error(
-    'Configuração de banco inválida: defina DATABASE_URL começando por postgres:// ou postgresql://, ou informe host/credenciais válidas sem localhost.'
-  );
-}
-
-const { pool, label: dbLabel } = buildPool();
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes('railway')
+    ? { rejectUnauthorized: false }
+    : false,
+});
 
 // ==========================================
-// AUTENTICAÇÃO ADMIN (TOKEN ASSINADO COM HMAC)
+// CLOUDFLARE R2 (OPCIONAL SE VARIÁVEIS DEFINIDAS)
 // ==========================================
-function signAdminToken() {
-  const payload = Buffer.from(
-    JSON.stringify({
-      role: 'admin',
-      iat: Date.now(),
-      exp: Date.now() + 1000 * 60 * 60 * 24 * 7,
-    })
-  ).toString('base64url');
-  const sig = crypto
-    .createHmac('sha256', JWT_SECRET)
-    .update(payload)
-    .digest('base64url');
-  return `${payload}.${sig}`;
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || '';
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || '';
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || '';
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || '';
+const R2_PUBLIC_URL = String(process.env.R2_PUBLIC_URL || '').replace(/\/$/, '');
+
+const r2Client =
+  R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY
+    ? new S3Client({
+        region: 'auto',
+        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: {
+          accessKeyId: R2_ACCESS_KEY_ID,
+          secretAccessKey: R2_SECRET_ACCESS_KEY,
+        },
+      })
+    : null;
+
+// ==========================================
+// MIDDLEWARES GERAIS
+// ==========================================
+app.set('trust proxy', 1);
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static(PUBLIC_ROOT));
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 180,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', apiLimiter);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+});
+
+// ==========================================
+// AUTENTICAÇÃO ADMIN (TOKEN ASSINADO HMAC)
+// ==========================================
+function signAdminToken(payloadObj) {
+  const payloadB64 = Buffer.from(JSON.stringify(payloadObj)).toString('base64url');
+  const sig = crypto.createHmac('sha256', JWT_SECRET).update(payloadB64).digest('base64url');
+  return `${payloadB64}.${sig}`;
 }
 
 function verifyAdminToken(token) {
-  if (!token || typeof token !== 'string') return false;
-  const parts = token.split('.');
-  if (parts.length !== 2) return false;
-  const [payload, sig] = parts;
-  const expectedSig = crypto
-    .createHmac('sha256', JWT_SECRET)
-    .update(payload)
-    .digest('base64url');
-
-  const sigBuf = Buffer.from(sig);
-  const expBuf = Buffer.from(expectedSig);
-  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-    return false;
-  }
-
+  if (!token || typeof token !== 'string' || !token.includes('.')) return null;
+  const [payloadB64, sig] = token.split('.');
+  const expected = crypto.createHmac('sha256', JWT_SECRET).update(payloadB64).digest('base64url');
+  if (sig !== expected) return null;
   try {
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (!data || data.role !== 'admin') return false;
-    if (typeof data.exp === 'number' && Date.now() > data.exp) return false;
-    return true;
-  } catch (_) {
-    return false;
+    const data = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    if (data.exp && Date.now() > data.exp) return null;
+    return data;
+  } catch {
+    return null;
   }
 }
 
 function requireAdmin(req, res, next) {
-  const authHeader = String(req.headers.authorization || '').trim();
-  const bearerToken = authHeader.toLowerCase().startsWith('bearer ')
-    ? authHeader.slice(7).trim()
-    : '';
-  const apiKeyHeader = String(req.headers['x-admin-key'] || '').trim();
-
-  if (verifyAdminToken(bearerToken)) {
-    return next();
+  const auth = String(req.headers.authorization || '');
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const session = verifyAdminToken(token);
+  if (!session) {
+    return res.status(401).json({ error: 'Sessão administrativa inválida ou expirada.' });
   }
-  if (ADMIN_API_KEY && (bearerToken === ADMIN_API_KEY || apiKeyHeader === ADMIN_API_KEY)) {
-    return next();
-  }
-
-  return res.status(401).json({ error: 'Não autorizado. Faça o login administrativo.' });
-}
-
-// ==========================================
-// UPLOAD DE IMAGEM PARA CLOUDFLARE R2 (AWS V4)
-// ==========================================
-function parseMultipartSingleFile(req) {
-  return new Promise((resolve, reject) => {
-    const contentType = String(req.headers['content-type'] || '');
-    const match = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
-    if (!match) return reject(new Error('Multipart boundary ausente.'));
-    const boundary = match[1] || match[2];
-
-    const chunks = [];
-    req.on('data', (chunk) => chunks.push(chunk));
-    req.on('end', () => {
-      const body = Buffer.concat(chunks);
-      const boundaryBuf = Buffer.from(`--${boundary}`);
-      let pos = body.indexOf(boundaryBuf);
-      let pasta = 'produtos';
-      let fileData = null;
-
-      while (pos !== -1) {
-        const start = pos + boundaryBuf.length;
-        const nextPos = body.indexOf(boundaryBuf, start);
-        if (nextPos === -1) break;
-
-        const part = body.slice(start, nextPos);
-        const headerEnd = part.indexOf('\r\n\r\n');
-        if (headerEnd !== -1) {
-          const headersText = part.slice(0, headerEnd).toString('utf8');
-          let content = part.slice(headerEnd + 4);
-          if (content.slice(-2).equals(Buffer.from('\r\n'))) {
-            content = content.slice(0, -2);
-          }
-
-          const filenameMatch = headersText.match(/filename="([^"]*)"/i);
-          const nameMatch = headersText.match(/name="([^"]*)"/i);
-
-          if (filenameMatch && filenameMatch[1]) {
-            const typeMatch = headersText.match(/Content-Type:\s*([^\r\n]+)/i);
-            fileData = {
-              filename: filenameMatch[1],
-              contentType: typeMatch ? typeMatch[1].trim() : 'application/octet-stream',
-              buffer: content,
-            };
-          } else if (nameMatch && nameMatch[1] === 'pasta') {
-            const cleanFolder = content
-              .toString('utf8')
-              .trim()
-              .replace(/[^a-zA-Z0-9_-]/g, '');
-            if (cleanFolder) pasta = cleanFolder;
-          }
-        }
-        pos = nextPos;
-      }
-
-      if (!fileData) {
-        return reject(new Error('Nenhum arquivo enviado no campo file.'));
-      }
-      resolve({ ...fileData, pasta });
-    });
-    req.on('error', reject);
-  });
-}
-
-function hmacSha256(key, data) {
-  return crypto.createHmac('sha256', key).update(data).digest();
-}
-
-function sha256Hex(buf) {
-  return crypto.createHash('sha256').update(buf).digest('hex');
-}
-
-function uploadBufferToR2(key, buffer, contentType) {
-  return new Promise((resolve, reject) => {
-    if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
-      return reject(new Error('Credenciais do Cloudflare R2 não configuradas nas variáveis.'));
-    }
-
-    const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-    const canonicalUri = `/${R2_BUCKET_NAME}/${key}`;
-    const now = new Date();
-    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
-    const dateStamp = amzDate.slice(0, 8);
-    const region = 'auto';
-    const service = 's3';
-    const payloadHash = sha256Hex(buffer);
-
-    const canonicalHeaders =
-      `host:${host}\n` +
-      `x-amz-content-sha256:${payloadHash}\n` +
-      `x-amz-date:${amzDate}\n`;
-    const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
-
-    const canonicalRequest = [
-      'PUT',
-      canonicalUri,
-      '',
-      canonicalHeaders,
-      signedHeaders,
-      payloadHash,
-    ].join('\n');
-
-    const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
-    const stringToSign = [
-      'AWS4-HMAC-SHA256',
-      amzDate,
-      credentialScope,
-      sha256Hex(Buffer.from(canonicalRequest, 'utf8')),
-    ].join('\n');
-
-    const kDate = hmacSha256(`AWS4${R2_SECRET_ACCESS_KEY}`, dateStamp);
-    const kRegion = hmacSha256(kDate, region);
-    const kService = hmacSha256(kRegion, service);
-    const kSigning = hmacSha256(kService, 'aws4_request');
-    const signature = crypto
-      .createHmac('sha256', kSigning)
-      .update(stringToSign)
-      .digest('hex');
-
-    const authorization =
-      `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, ` +
-      `SignedHeaders=${signedHeaders}, Signature=${signature}`;
-
-    const req = https.request(
-      {
-        hostname: host,
-        port: 443,
-        path: canonicalUri,
-        method: 'PUT',
-        headers: {
-          'Content-Type': contentType,
-          'Content-Length': buffer.length,
-          'x-amz-content-sha256': payloadHash,
-          'x-amz-date': amzDate,
-          Authorization: authorization,
-        },
-      },
-      (res) => {
-        const respChunks = [];
-        res.on('data', (c) => respChunks.push(c));
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            const publicBase = R2_PUBLIC_URL || `https://${host}/${R2_BUCKET_NAME}`;
-            resolve(`${publicBase}/${key}`);
-          } else {
-            reject(
-              new Error(
-                `R2 respondeu HTTP ${res.statusCode}: ${Buffer.concat(respChunks).toString('utf8')}`
-              )
-            );
-          }
-        });
-      }
-    );
-
-    req.on('error', reject);
-    req.write(buffer);
-    req.end();
-  });
-}
-
-// ==========================================
-// MIDDLEWARES E ARQUIVOS ESTÁTICOS DO FRONTEND
-// ==========================================
-app.use(cors());
-app.use(express.json({ limit: '15mb' }));
-
-const PUBLIC_ROOT = path.resolve(__dirname, '..', '..');
-
-app.use((req, res, next) => {
-  const blocked = /^\/(backend|\.env|\.git|package(-lock)?\.json)/i;
-  if (blocked.test(req.path)) {
-    return res.status(404).end();
-  }
+  req.admin = session;
   next();
-});
-
-app.use(express.static(PUBLIC_ROOT, { index: 'index.html' }));
-
-function parsePriceValue(value) {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
-  }
-  if (typeof value === 'string') {
-    const cleaned = value
-      .replace(/,/g, '.')
-      .replace(/[^0-9.-]/g, '')
-      .trim();
-    if (!cleaned) return 0;
-    const parsed = Number(cleaned);
-    return Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : 0;
-  }
-  return 0;
 }
-
-// Formata arrays para o tipo PostgreSQL correspondente (text[]/jsonb vs jsonb)
-function formatPgArrayOrJson(val, udtName, dataType) {
-  const arr = Array.isArray(val) ? val.filter((x) => x !== null && x !== undefined).map(String) : [];
-  if (dataType === 'ARRAY' || String(udtName || '').startsWith('_')) {
-    const escaped = arr.map((item) => `"${item.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
-    return `{${escaped.join(',')}}`;
-  }
-  return JSON.stringify(arr);
-}
-
-// ==========================================
-// INICIALIZAÇÃO E REPARO DO SCHEMA DO BANCO
-// ==========================================
-async function initDatabase() {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS produtos (
-        id SERIAL PRIMARY KEY,
-        uid TEXT,
-        name TEXT NOT NULL,
-        nome TEXT,
-        descricao TEXT DEFAULT '',
-        categoria TEXT DEFAULT 'cosmeticos',
-        imagem TEXT DEFAULT '',
-        imagens JSONB DEFAULT '[]'::jsonb,
-        price TEXT,
-        preco NUMERIC(12, 2) DEFAULT 0,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      );
-    `);
-
-    await client.query(`
-      ALTER TABLE produtos
-        ADD COLUMN IF NOT EXISTS uid TEXT,
-        ADD COLUMN IF NOT EXISTS name TEXT,
-        ADD COLUMN IF NOT EXISTS nome TEXT,
-        ADD COLUMN IF NOT EXISTS descricao TEXT DEFAULT '',
-        ADD COLUMN IF NOT EXISTS categoria TEXT DEFAULT 'cosmeticos',
-        ADD COLUMN IF NOT EXISTS imagem TEXT DEFAULT '',
-        ADD COLUMN IF NOT EXISTS imagens JSONB DEFAULT '[]'::jsonb,
-        ADD COLUMN IF NOT EXISTS price TEXT,
-        ADD COLUMN IF NOT EXISTS preco NUMERIC(12, 2) DEFAULT 0,
-        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW(),
-        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
-    `);
-
-    await client.query(`
-      DO $$
-      BEGIN
-        IF EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_schema = 'public' AND table_name = 'produtos' AND column_name = 'uid'
-        ) THEN
-          UPDATE produtos
-          SET uid = 'prod-' || id::text || '-' || substr(md5(random()::text), 1, 8)
-          WHERE uid IS NULL OR TRIM(uid) = '';
-
-          ALTER TABLE produtos
-            ALTER COLUMN uid DROP NOT NULL;
-        END IF;
-
-        IF EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_schema = 'public' AND table_name = 'produtos' AND column_name = 'name'
-        ) AND EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_schema = 'public' AND table_name = 'produtos' AND column_name = 'nome'
-        ) THEN
-          UPDATE produtos
-          SET name = COALESCE(NULLIF(TRIM(name), ''), NULLIF(TRIM(nome), ''), 'Produto'),
-              nome = COALESCE(NULLIF(TRIM(nome), ''), NULLIF(TRIM(name), ''), 'Produto');
-        END IF;
-
-        IF EXISTS (
-          SELECT 1
-          FROM information_schema.columns
-          WHERE table_schema = 'public'
-            AND table_name = 'produtos'
-            AND column_name = 'preco'
-        ) THEN
-          IF EXISTS (
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = 'produtos'
-              AND column_name = 'price'
-          ) THEN
-            UPDATE produtos
-            SET preco = COALESCE(
-              preco,
-              NULLIF(
-                regexp_replace(
-                  replace(COALESCE(price::text, ''), ',', '.'),
-                  '[^0-9.-]',
-                  '',
-                  'g'
-                ),
-                ''
-              )::numeric,
-              0::numeric
-            )
-            WHERE preco IS NULL;
-          ELSE
-            UPDATE produtos
-            SET preco = 0::numeric
-            WHERE preco IS NULL;
-          END IF;
-
-          ALTER TABLE produtos
-            ALTER COLUMN preco TYPE NUMERIC(12, 2)
-            USING COALESCE(preco, 0::numeric),
-            ALTER COLUMN preco SET DEFAULT 0,
-            ALTER COLUMN preco SET NOT NULL;
-        END IF;
-      END $$;
-    `);
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS loja_config (
-        id INTEGER PRIMARY KEY DEFAULT 1,
-        wpp_number TEXT DEFAULT '',
-        about_image TEXT DEFAULT '',
-        hidden_categories JSONB DEFAULT '[]'::jsonb,
-        brands JSONB DEFAULT '[]'::jsonb,
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      );
-    `);
-
-    await client.query(`
-      INSERT INTO loja_config (id, wpp_number, about_image, hidden_categories, brands)
-      VALUES (1, '', '', '[]'::jsonb, '[]'::jsonb)
-      ON CONFLICT (id) DO NOTHING;
-    `);
-
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS depoimentos (
-        id SERIAL PRIMARY KEY,
-        autor TEXT NOT NULL,
-        mensagem TEXT NOT NULL,
-        avaliacao INTEGER DEFAULT 5,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-    `);
-
-    await client.query('COMMIT');
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
-}
-
-// ==========================================
-// ROTAS DE SAÚDE E AUTENTICAÇÃO
-// ==========================================
-app.get('/health', async (_req, res) => {
-  try {
-    await pool.query('SELECT 1');
-    res.status(200).json({ status: 'ok' });
-  } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
-  }
-});
 
 app.post('/api/auth/login', (req, res) => {
-  const password = String(req.body?.password || '').trim();
-
-  if (!ADMIN_API_KEY) {
-    return res.status(500).json({
-      error: 'ADMIN_API_KEY não configurada no servidor.',
-    });
+  const pwd = String(req.body?.password || '').trim();
+  if (!ADMIN_PASSWORD) {
+    return res.status(500).json({ error: 'ADMIN_PASSWORD não configurada no servidor.' });
   }
-
-  if (!password) {
-    return res.status(400).json({ error: 'Digite a senha de acesso.' });
+  if (!pwd || pwd !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Senha incorreta.' });
   }
-
-  if (password !== ADMIN_API_KEY) {
-    return res.status(401).json({ error: 'Senha incorreta. Tente novamente.' });
-  }
-
-  const token = signAdminToken();
-  return res.status(200).json({ ok: true, token });
-});
-
-// ==========================================
-// ROTAS DE CONFIGURAÇÃO E DEPOIMENTOS
-// ==========================================
-app.get('/api/config', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM loja_config WHERE id = 1');
-    const row = result.rows[0] || {};
-    res.json({
-      wppNumber: row.wpp_number || process.env.WPP_NUMBER || '',
-      aboutImage: row.about_image || '',
-      hiddenCategories: Array.isArray(row.hidden_categories) ? row.hidden_categories : [],
-      brands: Array.isArray(row.brands) ? row.brands : [],
-    });
-  } catch (err) {
-    console.error('Erro ao buscar config:', err);
-    res.status(500).json({ error: 'Erro ao carregar configurações.' });
-  }
-});
-
-app.put('/api/config', requireAdmin, async (req, res) => {
-  try {
-    const { wppNumber, aboutImage, hiddenCategories, brands } = req.body || {};
-    const hiddenArr = Array.isArray(hiddenCategories) ? hiddenCategories : [];
-    const brandsArr = Array.isArray(brands) ? brands : [];
-
-    const result = await pool.query(
-      `UPDATE loja_config
-       SET wpp_number = COALESCE($1, wpp_number),
-           about_image = COALESCE($2, about_image),
-           hidden_categories = $3::jsonb,
-           brands = $4::jsonb,
-           updated_at = NOW()
-       WHERE id = 1
-       RETURNING *`,
-      [
-        wppNumber !== undefined ? String(wppNumber) : null,
-        aboutImage !== undefined ? String(aboutImage) : null,
-        JSON.stringify(hiddenArr),
-        JSON.stringify(brandsArr),
-      ]
-    );
-
-    const row = result.rows[0] || {};
-    res.json({
-      wppNumber: row.wpp_number || '',
-      aboutImage: row.about_image || '',
-      hiddenCategories: Array.isArray(row.hidden_categories) ? row.hidden_categories : [],
-      brands: Array.isArray(row.brands) ? row.brands : [],
-    });
-  } catch (err) {
-    console.error('Erro ao salvar config:', err);
-    res.status(500).json({ error: 'Erro ao salvar configurações.' });
-  }
-});
-
-app.get('/api/depoimentos', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM depoimentos ORDER BY id DESC');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Erro ao buscar depoimentos:', err);
-    res.status(500).json({ error: 'Erro ao carregar depoimentos.' });
-  }
-});
-
-// ==========================================
-// ROTA DE UPLOAD (CLOUDFLARE R2)
-// ==========================================
-app.post('/api/upload', requireAdmin, async (req, res) => {
-  try {
-    const file = await parseMultipartSingleFile(req);
-    const extMatch = String(file.filename || '').match(/\.(png|jpe?g|webp|gif)$/i);
-    const ext = extMatch ? extMatch[1].toLowerCase() : 'png';
-    const key = `${file.pasta}/${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
-    const url = await uploadBufferToR2(key, file.buffer, file.contentType);
-    return res.status(200).json({ ok: true, url, key });
-  } catch (err) {
-    console.error('Erro no upload R2:', err);
-    return res.status(500).json({ error: err.message || 'Falha no upload de imagem.' });
-  }
-});
-
-// ==========================================
-// ROTAS DE PRODUTOS
-// ==========================================
-app.get('/api/produtos', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM produtos ORDER BY id ASC');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Erro ao buscar produtos:', err);
-    res.status(500).json({ error: 'Erro interno ao buscar produtos.' });
-  }
-});
-
-app.post('/api/produtos', requireAdmin, async (req, res) => {
-  try {
-    const body = req.body || {};
-    const nomeFinal = String(body.name ?? body.nome ?? '').trim();
-    if (!nomeFinal) {
-      return res.status(400).json({ error: 'O nome do produto é obrigatório.' });
-    }
-
-    const uidFinal = String(body.uid || '').trim() || `prod-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-
-    const rawPriceInput =
-      body.preco !== undefined && body.preco !== null && String(body.preco).trim() !== ''
-        ? body.preco
-        : body.price;
-
-    const precoNormalizado = parsePriceValue(rawPriceInput);
-    const priceTexto =
-      rawPriceInput !== undefined && rawPriceInput !== null && String(rawPriceInput).trim() !== ''
-        ? String(rawPriceInput)
-        : precoNormalizado.toFixed(2).replace('.', ',');
-
-    const categoria = String(body.categoria || 'cosmeticos').trim() || 'cosmeticos';
-    const descricao = String(body.descricao || '').trim();
-    const imagensArr = Array.isArray(body.imagens)
-      ? body.imagens.filter(Boolean)
-      : body.imagem
-        ? [String(body.imagem)]
-        : [];
-    const imagemPrincipal = String(body.imagem || imagensArr[0] || '').trim();
-
-    const colsRes = await pool.query(`
-      SELECT column_name, data_type, udt_name
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'produtos'
-    `);
-    const colMeta = new Map(colsRes.rows.map((r) => [r.column_name, r]));
-
-    const insertCols = [];
-    const insertVals = [];
-    const placeholders = [];
-
-    const pushCol = (col, val, isArrayField = false) => {
-      const meta = colMeta.get(col);
-      if (!meta) return;
-
-      let formattedVal = val;
-      if (isArrayField) {
-        formattedVal = formatPgArrayOrJson(val, meta.udt_name, meta.data_type);
-      }
-
-      insertCols.push(col);
-      insertVals.push(formattedVal);
-      const cast = !isArrayField && meta.udt_name === 'jsonb' ? '::jsonb' : '';
-      placeholders.push(`$${insertVals.length}${cast}`);
-    };
-
-    pushCol('uid', uidFinal);
-    pushCol('name', nomeFinal);
-    pushCol('nome', nomeFinal);
-    pushCol('descricao', descricao);
-    pushCol('categoria', categoria);
-    pushCol('imagem', imagemPrincipal);
-    pushCol('imagens', imagensArr, true);
-    pushCol('price', priceTexto);
-    pushCol('preco', precoNormalizado);
-
-    if (insertCols.length === 0) {
-      throw new Error('Tabela produtos sem colunas compatíveis.');
-    }
-
-    const result = await pool.query(
-      `INSERT INTO produtos (${insertCols.join(', ')})
-       VALUES (${placeholders.join(', ')})
-       RETURNING *`,
-      insertVals
-    );
-
-    const created = result.rows[0];
-    res.status(201).json({
-      ...created,
-      name: created.name || created.nome || nomeFinal,
-      nome: created.nome || created.name || nomeFinal,
-    });
-  } catch (err) {
-    console.error('Erro ao criar produto:', err);
-    res.status(500).json({
-      error: 'Erro interno ao criar produto.',
-      detail: err.message,
-    });
-  }
-});
-
-// ==========================================
-// PÁGINAS HTML DA LOJA NIMARI
-// ==========================================
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(PUBLIC_ROOT, 'index.html'));
-});
-
-app.get('/produto', (_req, res) => {
-  res.sendFile(path.join(PUBLIC_ROOT, 'produto.html'));
-});
-
-async function startServer() {
-  await initDatabase();
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor ativo na porta ${PORT} (${dbLabel})`);
+  const token = signAdminToken({
+    role: 'admin',
+    iat: Date.now(),
+    exp: Date.now() + 12 * 60 * 60 * 1000,
   });
+  res.json({ ok: true, token });
+});
+
+// ==========================================
+// HELPERS DE NORMALIZAÇÃO DE PRODUTO
+// ==========================================
+function parsePrice(val) {
+  if (typeof val === 'number') return Number.isFinite(val) ? Number(val.toFixed(2)) : 0;
+  if (val === null || val === undefined) return 0;
+  const raw = String(val).trim();
+  if (!raw) return 0;
+  if (/^\d{1,3}(\.\d{3})*,\d{1,2}$/.test(raw)) {
+    const n = Number(raw.replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(n) ? Number(n.toFixed(2)) : 0;
+  }
+  const cleaned = raw.replace(/,/g, '.').replace(/[^0-9.-]/g, '');
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? Number(n.toFixed(2)) : 0;
 }
 
-startServer().catch((err) => {
-  console.error('Falha no arranque:', err);
-  process.exit(1);
-});
-// ==========================================
-// ROTAS DE PRODUTOS (INDIVIDUAL + EM LOTE)
-// ==========================================
-app.get('/api/produtos', async (_req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM produtos ORDER BY id DESC');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Erro ao buscar produtos:', err);
-    res.status(500).json({ error: 'Erro interno ao buscar produtos.' });
-  }
-});
+function normalizeCategory(cat) {
+  const c = String(cat || 'cosmeticos').trim().toLowerCase();
+  if (c.includes('confec') || c.includes('intima') || c.includes('moda')) return 'confeccao';
+  if (c.includes('kit')) return 'kit';
+  return 'cosmeticos';
+}
 
-async function inserirProdutoNoBanco(client, colMeta, body) {
-  const nomeFinal = String(body.name ?? body.nome ?? '').trim();
-  if (!nomeFinal) {
+function generateSku(providedSku) {
+  const clean = String(providedSku || '').trim().toUpperCase();
+  if (clean) return clean.slice(0, 64);
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const rand = crypto.randomBytes(3).toString('hex').toUpperCase();
+  return `NIM-${stamp}-${rand}`;
+}
+
+function sanitizeProductPayload(body = {}) {
+  const nome = String(body.nome ?? body.name ?? '').trim();
+  if (!nome) {
     throw new Error('O nome do produto é obrigatório.');
   }
 
-  const uidFinal =
-    String(body.uid || '').trim() ||
-    `prod-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const sku = generateSku(body.sku);
+  const descricao = String(body.descricao ?? '').trim();
+  const categoria = normalizeCategory(body.categoria);
+  const subcategoria = String(body.subcategoria ?? '').trim();
+  const marca = String(body.marca ?? '').trim();
+  const preco = parsePrice(body.preco ?? body.price ?? 0);
 
-  const rawPriceInput =
-    body.preco !== undefined && body.preco !== null && String(body.preco).trim() !== ''
-      ? body.preco
-      : body.price;
+  const rawOld = body.preco_antigo ?? body.priceOld;
+  const parsedOld = rawOld !== undefined && rawOld !== null && String(rawOld).trim() !== ''
+    ? parsePrice(rawOld)
+    : null;
+  const preco_antigo = parsedOld && parsedOld > preco ? parsedOld : null;
 
-  const precoNormalizado = parsePriceValue(rawPriceInput);
-  const priceTexto =
-    rawPriceInput !== undefined && rawPriceInput !== null && String(rawPriceInput).trim() !== ''
-      ? String(rawPriceInput)
-      : precoNormalizado.toFixed(2).replace('.', ',');
+  const allowedBadges = new Set(['none', 'novo', 'oferta', 'vendido', 'esgotado']);
+  const badgeRaw = String(body.badge || 'none').trim().toLowerCase();
+  const badge = allowedBadges.has(badgeRaw) ? badgeRaw : 'none';
 
-  const categoria = String(body.categoria || 'cosmeticos').trim() || 'cosmeticos';
-  const descricao = String(body.descricao || '').trim();
-  const imagensArr = Array.isArray(body.imagens)
-    ? body.imagens.filter(Boolean).map(String)
-    : body.imagem
-      ? [String(body.imagem).trim()]
-      : [];
-  const imagemPrincipal = String(body.imagem || imagensArr[0] || '').trim();
+  const imagensList = Array.isArray(body.imagens)
+    ? body.imagens.map((u) => String(u || '').trim()).filter(Boolean)
+    : [];
+  const imagem = String(body.imagem || imagensList[0] || '').trim();
+  const imagens = imagem
+    ? [imagem, ...imagensList.filter((u) => u !== imagem)]
+    : imagensList;
 
-  const insertCols = [];
-  const insertVals = [];
-  const placeholders = [];
+  const ativo = body.ativo === false ? false : true;
 
-  const pushCol = (col, val, isArrayField = false) => {
-    const meta = colMeta.get(col);
-    if (!meta) return;
-
-    let formattedVal = val;
-    if (isArrayField) {
-      formattedVal = formatPgArrayOrJson(val, meta.udt_name, meta.data_type);
-    }
-
-    insertCols.push(col);
-    insertVals.push(formattedVal);
-    const cast = !isArrayField && meta.udt_name === 'jsonb' ? '::jsonb' : '';
-    placeholders.push(`$${insertVals.length}${cast}`);
-  };
-
-  pushCol('uid', uidFinal);
-  pushCol('name', nomeFinal);
-  pushCol('nome', nomeFinal);
-  pushCol('descricao', descricao);
-  pushCol('categoria', categoria);
-  pushCol('imagem', imagemPrincipal);
-  pushCol('imagens', imagensArr, true);
-  pushCol('price', priceTexto);
-  pushCol('preco', precoNormalizado);
-
-  if (insertCols.length === 0) {
-    throw new Error('Tabela produtos sem colunas compatíveis.');
-  }
-
-  const result = await client.query(
-    `INSERT INTO produtos (${insertCols.join(', ')})
-     VALUES (${placeholders.join(', ')})
-     RETURNING *`,
-    insertVals
-  );
-
-  const created = result.rows[0];
   return {
-    ...created,
-    name: created.name || created.nome || nomeFinal,
-    nome: created.nome || created.name || nomeFinal,
+    sku,
+    nome,
+    descricao,
+    categoria,
+    subcategoria,
+    marca,
+    preco,
+    preco_antigo,
+    badge,
+    imagem,
+    imagens,
+    ativo,
   };
 }
 
-app.post('/api/produtos', requireAdmin, async (req, res) => {
-  const client = await pool.connect();
+// ==========================================
+// ROTAS DE PRODUTOS (VITRINE + ADMIN)
+// ==========================================
+app.get('/api/produtos', async (req, res) => {
   try {
-    const colsRes = await client.query(`
-      SELECT column_name, data_type, udt_name
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'produtos'
-    `);
-    const colMeta = new Map(colsRes.rows.map((r) => [r.column_name, r]));
-    const created = await inserirProdutoNoBanco(client, colMeta, req.body || {});
-    res.status(201).json(created);
+    const includeInactive = req.query.all === '1';
+    const sql = includeInactive
+      ? 'SELECT * FROM produtos ORDER BY id DESC'
+      : 'SELECT * FROM produtos WHERE ativo = TRUE ORDER BY id DESC';
+    const result = await pool.query(sql);
+    res.json(result.rows);
   } catch (err) {
-    console.error('Erro ao criar produto:', err);
-    res.status(400).json({
-      error: 'Erro ao criar produto.',
-      detail: err.message,
-    });
-  } finally {
-    client.release();
+    console.error('Erro ao listar produtos:', err);
+    res.status(500).json({ error: 'Erro ao listar produtos.' });
   }
 });
 
-// Cadastro em lote (array de produtos)
+app.post('/api/produtos', requireAdmin, async (req, res) => {
+  try {
+    const p = sanitizeProductPayload(req.body);
+    const result = await pool.query(
+      `INSERT INTO produtos
+        (sku, nome, descricao, categoria, subcategoria, marca, preco, preco_antigo, badge, imagem, imagens, ativo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12)
+       RETURNING *`,
+      [
+        p.sku,
+        p.nome,
+        p.descricao,
+        p.categoria,
+        p.subcategoria,
+        p.marca,
+        p.preco,
+        p.preco_antigo,
+        p.badge,
+        p.imagem,
+        JSON.stringify(p.imagens),
+        p.ativo,
+      ]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Erro ao cadastrar produto:', err);
+    res.status(400).json({ error: 'Falha ao cadastrar produto.', detail: err.message });
+  }
+});
+
 app.post('/api/produtos/batch', requireAdmin, async (req, res) => {
-  const items = Array.isArray(req.body?.produtos) ? req.body.produtos : [];
-  if (items.length === 0) {
+  const list = Array.isArray(req.body?.produtos) ? req.body.produtos : [];
+  if (list.length === 0) {
     return res.status(400).json({ error: 'Envie uma lista em "produtos" para importar em lote.' });
   }
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const colsRes = await client.query(`
-      SELECT column_name, data_type, udt_name
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'produtos'
-    `);
-    const colMeta = new Map(colsRes.rows.map((r) => [r.column_name, r]));
+    const inserted = [];
 
-    const criados = [];
-    for (const item of items) {
-      const created = await inserirProdutoNoBanco(client, colMeta, item);
-      criados.push(created);
+    for (const rawItem of list) {
+      const p = sanitizeProductPayload(rawItem);
+      const r = await client.query(
+        `INSERT INTO produtos
+          (sku, nome, descricao, categoria, subcategoria, marca, preco, preco_antigo, badge, imagem, imagens, ativo)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12)
+         ON CONFLICT (sku) DO UPDATE SET
+           nome = EXCLUDED.nome,
+           descricao = EXCLUDED.descricao,
+           categoria = EXCLUDED.categoria,
+           subcategoria = EXCLUDED.subcategoria,
+           marca = EXCLUDED.marca,
+           preco = EXCLUDED.preco,
+           preco_antigo = EXCLUDED.preco_antigo,
+           badge = EXCLUDED.badge,
+           imagem = CASE WHEN EXCLUDED.imagem <> '' THEN EXCLUDED.imagem ELSE produtos.imagem END,
+           imagens = CASE WHEN jsonb_array_length(EXCLUDED.imagens) > 0 THEN EXCLUDED.imagens ELSE produtos.imagens END,
+           ativo = EXCLUDED.ativo,
+           updated_at = NOW()
+         RETURNING *`,
+        [
+          p.sku,
+          p.nome,
+          p.descricao,
+          p.categoria,
+          p.subcategoria,
+          p.marca,
+          p.preco,
+          p.preco_antigo,
+          p.badge,
+          p.imagem,
+          JSON.stringify(p.imagens),
+          p.ativo,
+        ]
+      );
+      inserted.push(r.rows[0]);
     }
 
     await client.query('COMMIT');
-    res.status(201).json({ ok: true, count: criados.length, produtos: criados });
+    res.status(201).json({ ok: true, count: inserted.length, produtos: inserted });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Erro na importação em lote:', err);
-    res.status(400).json({
-      error: 'Falha na importação em lote.',
-      detail: err.message,
-    });
+    res.status(400).json({ error: 'Falha na importação em lote.', detail: err.message });
   } finally {
     client.release();
   }
 });
 
-// Edição individual por ID
 app.put('/api/produtos/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: 'ID de produto inválido.' });
+    return res.status(400).json({ error: 'ID inválido.' });
   }
 
   try {
-    const body = req.body || {};
-    const nomeFinal = String(body.name ?? body.nome ?? '').trim();
-    if (!nomeFinal) {
-      return res.status(400).json({ error: 'O nome do produto é obrigatório.' });
-    }
-
-    const rawPriceInput =
-      body.preco !== undefined && body.preco !== null && String(body.preco).trim() !== ''
-        ? body.preco
-        : body.price;
-    const precoNormalizado = parsePriceValue(rawPriceInput);
-    const priceTexto =
-      rawPriceInput !== undefined && rawPriceInput !== null && String(rawPriceInput).trim() !== ''
-        ? String(rawPriceInput)
-        : precoNormalizado.toFixed(2).replace('.', ',');
-
-    const categoria = String(body.categoria || 'cosmeticos').trim() || 'cosmeticos';
-    const descricao = String(body.descricao || '').trim();
-    const imagensArr = Array.isArray(body.imagens)
-      ? body.imagens.filter(Boolean).map(String)
-      : body.imagem
-        ? [String(body.imagem).trim()]
-        : [];
-    const imagemPrincipal = String(body.imagem || imagensArr[0] || '').trim();
-
+    const p = sanitizeProductPayload(req.body);
     const result = await pool.query(
       `UPDATE produtos
-       SET name = $1,
-           nome = $1,
-           descricao = $2,
-           categoria = $3,
-           imagem = $4,
-           imagens = $5::jsonb,
-           price = $6,
+       SET sku = $1,
+           nome = $2,
+           descricao = $3,
+           categoria = $4,
+           subcategoria = $5,
+           marca = $6,
            preco = $7,
+           preco_antigo = $8,
+           badge = $9,
+           imagem = $10,
+           imagens = $11::jsonb,
+           ativo = $12,
            updated_at = NOW()
-       WHERE id = $8
+       WHERE id = $13
        RETURNING *`,
       [
-        nomeFinal,
-        descricao,
-        categoria,
-        imagemPrincipal,
-        JSON.stringify(imagensArr),
-        priceTexto,
-        precoNormalizado,
+        p.sku,
+        p.nome,
+        p.descricao,
+        p.categoria,
+        p.subcategoria,
+        p.marca,
+        p.preco,
+        p.preco_antigo,
+        p.badge,
+        p.imagem,
+        JSON.stringify(p.imagens),
+        p.ativo,
         id,
       ]
     );
@@ -968,24 +355,17 @@ app.put('/api/produtos/:id', requireAdmin, async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Produto não encontrado.' });
     }
-
-    const updated = result.rows[0];
-    res.json({
-      ...updated,
-      name: updated.name || updated.nome || nomeFinal,
-      nome: updated.nome || updated.name || nomeFinal,
-    });
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error('Erro ao atualizar produto:', err);
-    res.status(500).json({ error: 'Erro ao atualizar produto.', detail: err.message });
+    console.error('Erro ao editar produto:', err);
+    res.status(400).json({ error: 'Falha ao atualizar produto.', detail: err.message });
   }
 });
 
-// Exclusão individual por ID
 app.delete('/api/produtos/:id', requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
-    return res.status(400).json({ error: 'ID de produto inválido.' });
+    return res.status(400).json({ error: 'ID inválido.' });
   }
 
   try {
@@ -1000,7 +380,72 @@ app.delete('/api/produtos/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// Rota dedicada do painel administrativo
+// ==========================================
+// UPLOAD DE IMAGEM -> WEBP NO CLOUDFLARE R2
+// ==========================================
+app.post('/api/upload', requireAdmin, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
+    }
+    if (!r2Client || !R2_BUCKET_NAME || !R2_PUBLIC_URL) {
+      return res.status(500).json({ error: 'Cloudflare R2 não configurado nas variáveis de ambiente.' });
+    }
+
+    const pasta = String(req.body?.pasta || 'produtos').replace(/[^a-z0-9_-]/gi, '') || 'produtos';
+    const filename = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}.webp`;
+    const key = `${pasta}/${filename}`;
+
+    const webpBuffer = await sharp(req.file.buffer)
+      .rotate()
+      .resize({ width: 1200, withoutEnlargement: true })
+      .webp({ quality: 84 })
+      .toBuffer();
+
+    await r2Client.send(
+      new PutObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: key,
+        Body: webpBuffer,
+        ContentType: 'image/webp',
+        CacheControl: 'public, max-age=31536000',
+      })
+    );
+
+    res.json({ ok: true, key, url: `${R2_PUBLIC_URL}/${key}` });
+  } catch (err) {
+    console.error('Erro no upload R2:', err);
+    res.status(500).json({ error: 'Falha ao processar upload.', detail: err.message });
+  }
+});
+
+// ==========================================
+// CONFIG & DEPOIMENTOS (FALLBACK SEGURO)
+// ==========================================
+app.get('/api/config', async (_req, res) => {
+  res.json({
+    wppNumber: process.env.WPP_NUMBER || '5598985631126',
+    aboutImage: '',
+    hiddenCategories: [],
+    brands: [],
+  });
+});
+
+app.get('/api/depoimentos', async (_req, res) => {
+  res.json([]);
+});
+
+// ==========================================
+// ROTAS DE PÁGINAS
+// ==========================================
 app.get('/admin', (_req, res) => {
   res.sendFile(path.join(PUBLIC_ROOT, 'admin.html'));
+});
+
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(PUBLIC_ROOT, 'index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`NIMARI server rodando na porta ${PORT}`);
 });
