@@ -1,18 +1,15 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import multer from 'multer';
-import sharp from 'sharp';
-import crypto from 'crypto';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import pg from 'pg';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const multer = require('multer');
+const sharp = require('sharp');
+const crypto = require('crypto');
+const path = require('path');
+const { Pool } = require('pg');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PUBLIC_ROOT = path.resolve(__dirname, '..');
+const PUBLIC_ROOT = path.resolve(__dirname, '../..');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -22,9 +19,9 @@ const JWT_SECRET = String(process.env.JWT_SECRET || ADMIN_PASSWORD || 'nimari-se
 // ==========================================
 // CONEXÃO POSTGRESQL (RAILWAY)
 // ==========================================
-const pool = new pg.Pool({
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('railway')
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('railway')
     ? { rejectUnauthorized: false }
     : false,
 });
@@ -107,7 +104,7 @@ function requireAdmin(req, res, next) {
 }
 
 app.post('/api/auth/login', (req, res) => {
-  const pwd = String(req.body?.password || '').trim();
+  const pwd = String(req.body && req.body.password ? req.body.password : '').trim();
   if (!ADMIN_PASSWORD) {
     return res.status(500).json({ error: 'ADMIN_PASSWORD não configurada no servidor.' });
   }
@@ -154,38 +151,40 @@ function generateSku(providedSku) {
   return `NIM-${stamp}-${rand}`;
 }
 
-function sanitizeProductPayload(body = {}) {
-  const nome = String(body.nome ?? body.name ?? '').trim();
+function sanitizeProductPayload(body) {
+  const b = body && typeof body === 'object' ? body : {};
+  const nome = String(b.nome !== undefined ? b.nome : b.name !== undefined ? b.name : '').trim();
   if (!nome) {
     throw new Error('O nome do produto é obrigatório.');
   }
 
-  const sku = generateSku(body.sku);
-  const descricao = String(body.descricao ?? '').trim();
-  const categoria = normalizeCategory(body.categoria);
-  const subcategoria = String(body.subcategoria ?? '').trim();
-  const marca = String(body.marca ?? '').trim();
-  const preco = parsePrice(body.preco ?? body.price ?? 0);
+  const sku = generateSku(b.sku);
+  const descricao = String(b.descricao !== undefined ? b.descricao : '').trim();
+  const categoria = normalizeCategory(b.categoria);
+  const subcategoria = String(b.subcategoria !== undefined ? b.subcategoria : '').trim();
+  const marca = String(b.marca !== undefined ? b.marca : '').trim();
+  const preco = parsePrice(b.preco !== undefined ? b.preco : b.price !== undefined ? b.price : 0);
 
-  const rawOld = body.preco_antigo ?? body.priceOld;
-  const parsedOld = rawOld !== undefined && rawOld !== null && String(rawOld).trim() !== ''
-    ? parsePrice(rawOld)
-    : null;
+  const rawOld = b.preco_antigo !== undefined ? b.preco_antigo : b.priceOld;
+  const parsedOld =
+    rawOld !== undefined && rawOld !== null && String(rawOld).trim() !== ''
+      ? parsePrice(rawOld)
+      : null;
   const preco_antigo = parsedOld && parsedOld > preco ? parsedOld : null;
 
   const allowedBadges = new Set(['none', 'novo', 'oferta', 'vendido', 'esgotado']);
-  const badgeRaw = String(body.badge || 'none').trim().toLowerCase();
+  const badgeRaw = String(b.badge || 'none').trim().toLowerCase();
   const badge = allowedBadges.has(badgeRaw) ? badgeRaw : 'none';
 
-  const imagensList = Array.isArray(body.imagens)
-    ? body.imagens.map((u) => String(u || '').trim()).filter(Boolean)
+  const imagensList = Array.isArray(b.imagens)
+    ? b.imagens.map((u) => String(u || '').trim()).filter(Boolean)
     : [];
-  const imagem = String(body.imagem || imagensList[0] || '').trim();
+  const imagem = String(b.imagem || imagensList[0] || '').trim();
   const imagens = imagem
-    ? [imagem, ...imagensList.filter((u) => u !== imagem)]
+    ? [imagem].concat(imagensList.filter((u) => u !== imagem))
     : imagensList;
 
-  const ativo = body.ativo === false ? false : true;
+  const ativo = b.ativo === false ? false : true;
 
   return {
     sku,
@@ -251,7 +250,7 @@ app.post('/api/produtos', requireAdmin, async (req, res) => {
 });
 
 app.post('/api/produtos/batch', requireAdmin, async (req, res) => {
-  const list = Array.isArray(req.body?.produtos) ? req.body.produtos : [];
+  const list = req.body && Array.isArray(req.body.produtos) ? req.body.produtos : [];
   if (list.length === 0) {
     return res.status(400).json({ error: 'Envie uma lista em "produtos" para importar em lote.' });
   }
@@ -261,8 +260,8 @@ app.post('/api/produtos/batch', requireAdmin, async (req, res) => {
     await client.query('BEGIN');
     const inserted = [];
 
-    for (const rawItem of list) {
-      const p = sanitizeProductPayload(rawItem);
+    for (let i = 0; i < list.length; i += 1) {
+      const p = sanitizeProductPayload(list[i]);
       const r = await client.query(
         `INSERT INTO produtos
           (sku, nome, descricao, categoria, subcategoria, marca, preco, preco_antigo, badge, imagem, imagens, ativo)
@@ -392,7 +391,7 @@ app.post('/api/upload', requireAdmin, upload.single('file'), async (req, res) =>
       return res.status(500).json({ error: 'Cloudflare R2 não configurado nas variáveis de ambiente.' });
     }
 
-    const pasta = String(req.body?.pasta || 'produtos').replace(/[^a-z0-9_-]/gi, '') || 'produtos';
+    const pasta = String(req.body && req.body.pasta ? req.body.pasta : 'produtos').replace(/[^a-z0-9_-]/gi, '') || 'produtos';
     const filename = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}.webp`;
     const key = `${pasta}/${filename}`;
 
