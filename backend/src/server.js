@@ -1,5 +1,6 @@
-const path = require('path');
+onst path = require('path');
 const crypto = require('crypto');
+const https = require('https');
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
@@ -9,6 +10,12 @@ const PORT = process.env.PORT || 3000;
 
 const ADMIN_API_KEY = String(process.env.ADMIN_API_KEY || '').trim();
 const JWT_SECRET = String(process.env.JWT_SECRET || ADMIN_API_KEY || 'nimari-dev-secret').trim();
+
+const R2_ACCOUNT_ID = String(process.env.R2_ACCOUNT_ID || '').trim();
+const R2_ACCESS_KEY_ID = String(process.env.R2_ACCESS_KEY_ID || '').trim();
+const R2_SECRET_ACCESS_KEY = String(process.env.R2_SECRET_ACCESS_KEY || '').trim();
+const R2_BUCKET_NAME = String(process.env.R2_BUCKET_NAME || 'nimari-midia').trim();
+const R2_PUBLIC_URL = String(process.env.R2_PUBLIC_URL || '').trim().replace(/\/+$/, '');
 
 // ==========================================
 // CONEXÃO COM POSTGRESQL
@@ -155,6 +162,166 @@ function requireAdmin(req, res, next) {
   }
 
   return res.status(401).json({ error: 'Não autorizado. Faça o login administrativo.' });
+}
+
+// ==========================================
+// UPLOAD DE IMAGEM PARA CLOUDFLARE R2 (AWS V4)
+// ==========================================
+function parseMultipartSingleFile(req) {
+  return new Promise((resolve, reject) => {
+    const contentType = String(req.headers['content-type'] || '');
+    const match = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+    if (!match) return reject(new Error('Multipart boundary ausente.'));
+    const boundary = match[1] || match[2];
+
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => {
+      const body = Buffer.concat(chunks);
+      const boundaryBuf = Buffer.from(`--${boundary}`);
+      let pos = body.indexOf(boundaryBuf);
+      let pasta = 'produtos';
+      let fileData = null;
+
+      while (pos !== -1) {
+        const start = pos + boundaryBuf.length;
+        const nextPos = body.indexOf(boundaryBuf, start);
+        if (nextPos === -1) break;
+
+        const part = body.slice(start, nextPos);
+        const headerEnd = part.indexOf('\r\n\r\n');
+        if (headerEnd !== -1) {
+          const headersText = part.slice(0, headerEnd).toString('utf8');
+          let content = part.slice(headerEnd + 4);
+          if (content.slice(-2).equals(Buffer.from('\r\n'))) {
+            content = content.slice(0, -2);
+          }
+
+          const filenameMatch = headersText.match(/filename="([^"]*)"/i);
+          const nameMatch = headersText.match(/name="([^"]*)"/i);
+
+          if (filenameMatch && filenameMatch[1]) {
+            const typeMatch = headersText.match(/Content-Type:\s*([^\r\n]+)/i);
+            fileData = {
+              filename: filenameMatch[1],
+              contentType: typeMatch ? typeMatch[1].trim() : 'application/octet-stream',
+              buffer: content,
+            };
+          } else if (nameMatch && nameMatch[1] === 'pasta') {
+            const cleanFolder = content
+              .toString('utf8')
+              .trim()
+              .replace(/[^a-zA-Z0-9_-]/g, '');
+            if (cleanFolder) pasta = cleanFolder;
+          }
+        }
+        pos = nextPos;
+      }
+
+      if (!fileData) {
+        return reject(new Error('Nenhum arquivo enviado no campo file.'));
+      }
+      resolve({ ...fileData, pasta });
+    });
+    req.on('error', reject);
+  });
+}
+
+function hmacSha256(key, data) {
+  return crypto.createHmac('sha256', key).update(data).digest();
+}
+
+function sha256Hex(buf) {
+  return crypto.createHash('sha256').update(buf).digest('hex');
+}
+
+function uploadBufferToR2(key, buffer, contentType) {
+  return new Promise((resolve, reject) => {
+    if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) {
+      return reject(new Error('Credenciais do Cloudflare R2 não configuradas nas variáveis.'));
+    }
+
+    const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+    const canonicalUri = `/${R2_BUCKET_NAME}/${key}`;
+    const now = new Date();
+    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+    const dateStamp = amzDate.slice(0, 8);
+    const region = 'auto';
+    const service = 's3';
+    const payloadHash = sha256Hex(buffer);
+
+    const canonicalHeaders =
+      `host:${host}\n` +
+      `x-amz-content-sha256:${payloadHash}\n` +
+      `x-amz-date:${amzDate}\n`;
+    const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+
+    const canonicalRequest = [
+      'PUT',
+      canonicalUri,
+      '',
+      canonicalHeaders,
+      signedHeaders,
+      payloadHash,
+    ].join('\n');
+
+    const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+    const stringToSign = [
+      'AWS4-HMAC-SHA256',
+      amzDate,
+      credentialScope,
+      sha256Hex(Buffer.from(canonicalRequest, 'utf8')),
+    ].join('\n');
+
+    const kDate = hmacSha256(`AWS4${R2_SECRET_ACCESS_KEY}`, dateStamp);
+    const kRegion = hmacSha256(kDate, region);
+    const kService = hmacSha256(kRegion, service);
+    const kSigning = hmacSha256(kService, 'aws4_request');
+    const signature = crypto
+      .createHmac('sha256', kSigning)
+      .update(stringToSign)
+      .digest('hex');
+
+    const authorization =
+      `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, ` +
+      `SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+    const req = https.request(
+      {
+        hostname: host,
+        port: 443,
+        path: canonicalUri,
+        method: 'PUT',
+        headers: {
+          'Content-Type': contentType,
+          'Content-Length': buffer.length,
+          'x-amz-content-sha256': payloadHash,
+          'x-amz-date': amzDate,
+          Authorization: authorization,
+        },
+      },
+      (res) => {
+        const respChunks = [];
+        res.on('data', (c) => respChunks.push(c));
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            const publicBase = R2_PUBLIC_URL || `https://${host}/${R2_BUCKET_NAME}`;
+            resolve(`${publicBase}/${key}`);
+          } else {
+            reject(
+              new Error(
+                `R2 respondeu HTTP ${res.statusCode}: ${Buffer.concat(respChunks).toString('utf8')}`
+              )
+            );
+          }
+        });
+      }
+    );
+
+    req.on('error', reject);
+    req.write(buffer);
+    req.end();
+  });
 }
 
 // ==========================================
@@ -406,6 +573,23 @@ app.get('/api/depoimentos', async (_req, res) => {
 });
 
 // ==========================================
+// ROTA DE UPLOAD (CLOUDFLARE R2)
+// ==========================================
+app.post('/api/upload', requireAdmin, async (req, res) => {
+  try {
+    const file = await parseMultipartSingleFile(req);
+    const extMatch = String(file.filename || '').match(/\.(png|jpe?g|webp|gif)$/i);
+    const ext = extMatch ? extMatch[1].toLowerCase() : 'png';
+    const key = `${file.pasta}/${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
+    const url = await uploadBufferToR2(key, file.buffer, file.contentType);
+    return res.status(200).json({ ok: true, url, key });
+  } catch (err) {
+    console.error('Erro no upload R2:', err);
+    return res.status(500).json({ error: err.message || 'Falha no upload de imagem.' });
+  }
+});
+
+// ==========================================
 // ROTAS DE PRODUTOS
 // ==========================================
 app.get('/api/produtos', async (_req, res) => {
@@ -463,7 +647,6 @@ app.post('/api/produtos', requireAdmin, async (req, res) => {
     );
 
     const created = result.rows[0];
-    // Inclui alias "nome" além de "name" para compatibilidade com qualquer consumidor do frontend
     res.status(201).json({
       ...created,
       nome: created.name,
