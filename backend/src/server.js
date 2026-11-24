@@ -5,16 +5,65 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl:
+function resolveDatabaseConfig() {
+  const connectionString =
+    process.env.DATABASE_URL ||
+    process.env.DATABASE_PRIVATE_URL ||
+    process.env.POSTGRES_URL ||
+    '';
+
+  const useSsl =
     process.env.DATABASE_SSL === 'false'
       ? false
-      : process.env.NODE_ENV === 'production' ||
-          (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost'))
-        ? { rejectUnauthorized: false }
-        : false,
-});
+      : process.env.DATABASE_SSL === 'true' ||
+          process.env.NODE_ENV === 'production' ||
+          Boolean(connectionString && !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1'));
+
+  const sslConfig = useSsl ? { rejectUnauthorized: false } : false;
+
+  if (connectionString) {
+    return {
+      source: process.env.DATABASE_URL
+        ? 'DATABASE_URL'
+        : process.env.DATABASE_PRIVATE_URL
+          ? 'DATABASE_PRIVATE_URL'
+          : 'POSTGRES_URL',
+      poolConfig: {
+        connectionString,
+        ssl: sslConfig,
+      },
+    };
+  }
+
+  if (process.env.PGHOST) {
+    return {
+      source: 'PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE',
+      poolConfig: {
+        host: process.env.PGHOST,
+        port: Number(process.env.PGPORT || 5432),
+        user: process.env.PGUSER || 'postgres',
+        password: process.env.PGPASSWORD,
+        database: process.env.PGDATABASE || 'railway',
+        ssl: sslConfig,
+      },
+    };
+  }
+
+  return {
+    source: 'fallback_localhost',
+    poolConfig: {
+      host: '127.0.0.1',
+      port: 5432,
+      user: 'postgres',
+      password: process.env.PGPASSWORD || '',
+      database: process.env.PGDATABASE || 'railway',
+      ssl: false,
+    },
+  };
+}
+
+const dbConfig = resolveDatabaseConfig();
+const pool = new Pool(dbConfig.poolConfig);
 
 app.use(cors());
 app.use(express.json());
@@ -44,6 +93,14 @@ function parsePriceValue(value) {
  * COALESCE types numeric and text cannot be matched (42804).
  */
 async function initDatabase() {
+  if (dbConfig.source === 'fallback_localhost') {
+    console.warn(
+      'AVISO: Nenhuma variável de base de dados (DATABASE_URL, DATABASE_PRIVATE_URL ou PGHOST) foi encontrada no ambiente. A tentar 127.0.0.1:5432.'
+    );
+  } else {
+    console.log(`A ligar ao PostgreSQL via ${dbConfig.source}...`);
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
