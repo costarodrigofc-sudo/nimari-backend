@@ -112,8 +112,7 @@ pool.on('error', (err) => {
   console.error('Erro inesperado no pool do PostgreSQL:', err);
 });
 
-{
-  async function initDatabase() {
+async function initDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS produtos (
       id TEXT PRIMARY KEY,
@@ -184,12 +183,6 @@ pool.on('error', (err) => {
       created_at BIGINT NOT NULL DEFAULT 0
     );
 
-    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS avatar TEXT NOT NULL DEFAULT '';
-    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS stars INTEGER NOT NULL DEFAULT 5;
-    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS loc TEXT NOT NULL DEFAULT '';
-    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS date TEXT NOT NULL DEFAULT '';
-    ALTER TABLE depoimentos ADD COLUMN IF NOT EXISTS created_at BIGINT NOT NULL DEFAULT 0;
-
     CREATE TABLE IF NOT EXISTS config_site (
       id TEXT PRIMARY KEY DEFAULT 'default',
       wpp_number TEXT NOT NULL DEFAULT '5598985631126',
@@ -198,123 +191,11 @@ pool.on('error', (err) => {
       brands JSONB NOT NULL DEFAULT '[]'::jsonb
     );
 
-    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS wpp_number TEXT NOT NULL DEFAULT '5598985631126';
-    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS about_image TEXT NOT NULL DEFAULT '';
-    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS hidden_categories JSONB NOT NULL DEFAULT '[]'::jsonb;
-    ALTER TABLE config_site ADD COLUMN IF NOT EXISTS brands JSONB NOT NULL DEFAULT '[]'::jsonb;
-
     INSERT INTO config_site (id, wpp_number, about_image, hidden_categories, brands)
     VALUES ('default', '5598985631126', '', '[]'::jsonb, '[]'::jsonb)
     ON CONFLICT (id) DO NOTHING;
   `);
 }
-
-app.post('/api/produtos', autenticarAdmin, async (req, res) => {
-  try {
-    const body = req.body || {};
-    const nome = String(body.nome || '').trim();
-    if (!nome) {
-      return res.status(400).json({ error: 'Nome do produto é obrigatório.' });
-    }
-
-    const id = String(body.id || `prod-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`);
-    const preco = toNumberPrice(body.preco);
-    const precoAntigo =
-      body.precoAntigo !== undefined && body.precoAntigo !== null && body.precoAntigo !== ''
-        ? toNumberPrice(body.precoAntigo)
-        : null;
-    const imagens = Array.isArray(body.imagens) ? body.imagens.filter(Boolean) : [];
-    const imagem = String(body.imagem || imagens[0] || '').trim();
-    const createdAt = Number(body.createdAt) || Date.now();
-
-    const result = await pool.query(
-      `INSERT INTO produtos (
-        id, nome, descricao, preco, preco_antigo, categoria, subcategoria,
-        imagem, imagens, badge, wpp, mp_link, vendas, created_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14)
-      RETURNING *`,
-      [
-        id,
-        nome,
-        String(body.descricao || '').trim(),
-        preco,
-        precoAntigo,
-        String(body.categoria || 'cosmeticos').trim(),
-        String(body.subcategoria || 'outros-cosm').trim(),
-        imagem,
-        JSON.stringify(imagens),
-        String(body.badge || 'none').trim(),
-        String(body.wpp || '').replace(/\D+/g, ''),
-        String(body.mp_link || '').trim(),
-        Number(body.vendas) || 0,
-        createdAt,
-      ]
-    );
-
-    return res.status(201).json(mapProdutoRow(result.rows[0]));
-  } catch (err) {
-    console.error('Erro ao criar produto:', err);
-    return res.status(500).json({
-      error: 'Erro ao criar produto.',
-      detail: err.message,
-      code: err.code || null,
-    });
-  }
-});
-}
-
-app.post('/api/produtos', autenticarAdmin, async (req, res) => {
-  try {
-    const body = req.body || {};
-    const nome = String(body.nome || '').trim();
-    if (!nome) {
-      return res.status(400).json({ error: 'Nome do produto é obrigatório.' });
-    }
-
-    const id = String(body.id || `prod-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`);
-    const preco = toNumberPrice(body.preco);
-    const precoAntigo =
-      body.precoAntigo !== undefined && body.precoAntigo !== null && body.precoAntigo !== ''
-        ? toNumberPrice(body.precoAntigo)
-        : null;
-    const imagens = Array.isArray(body.imagens) ? body.imagens.filter(Boolean) : [];
-    const imagem = String(body.imagem || imagens[0] || '').trim();
-    const createdAt = Number(body.createdAt) || Date.now();
-
-    const result = await pool.query(
-      `INSERT INTO produtos (
-        id, nome, descricao, preco, preco_antigo, categoria, subcategoria,
-        imagem, imagens, badge, wpp, mp_link, vendas, created_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14)
-      RETURNING *`,
-      [
-        id,
-        nome,
-        String(body.descricao || '').trim(),
-        preco,
-        precoAntigo,
-        String(body.categoria || 'cosmeticos').trim(),
-        String(body.subcategoria || 'outros-cosm').trim(),
-        imagem,
-        JSON.stringify(imagens),
-        String(body.badge || 'none').trim(),
-        String(body.wpp || '').replace(/\D+/g, ''),
-        String(body.mp_link || '').trim(),
-        Number(body.vendas) || 0,
-        createdAt,
-      ]
-    );
-
-    return res.status(201).json(mapProdutoRow(result.rows[0]));
-  } catch (err) {
-    console.error('Erro ao criar produto:', err);
-    return res.status(500).json({
-      error: 'Erro ao criar produto.',
-      detail: err.message,
-      code: err.code || null,
-    });
-  }
-});
 // ==========================================
 // CLIENTE CLOUDFLARE R2 (BUCKET: nimari-midia)
 // ==========================================
