@@ -9,7 +9,7 @@ const path = require('path');
 const { Pool } = require('pg');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
-const PUBLIC_ROOT = path.resolve(__dirname, '../..');
+const PUBLIC_ROOT = __dirname;
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
