@@ -336,3 +336,95 @@ window.adminLogin = adminLogin;
 window.closeAdminLogin = closeAdminLogin;
 window.nimariUploadImagem = nimariUploadImagem;
 window.nimariCriarProduto = nimariCriarProduto;
+/* ── LOGIN ADMIN DIRETO + API NIMARI ── */
+(function () {
+  const API_BASE =
+    typeof window.NIMARI_API_URL === 'string' && window.NIMARI_API_URL
+      ? window.NIMARI_API_URL.replace(/\/$/, '')
+      : '/api';
+
+  function getOverlay() {
+    return document.getElementById('adminLoginOverlay');
+  }
+
+  function getErrEl() {
+    return document.getElementById('adminLoginErr');
+  }
+
+  window.openAdminLogin = function () {
+    const ov = getOverlay();
+    const err = getErrEl();
+    if (err) err.style.display = 'none';
+    if (ov) {
+      ov.style.display = 'flex';
+      ov.classList.add('active', 'open', 'show');
+    }
+  };
+
+  window.closeAdminLogin = function () {
+    const ov = getOverlay();
+    const err = getErrEl();
+    if (err) err.style.display = 'none';
+    if (ov) {
+      ov.style.display = 'none';
+      ov.classList.remove('active', 'open', 'show');
+    }
+  };
+
+  window.adminLogin = async function () {
+    const inp = document.getElementById('adminPwdInput');
+    const err = getErrEl();
+    const password = inp ? String(inp.value || '').trim() : '';
+
+    if (err) err.style.display = 'none';
+
+    if (!password) {
+      if (err) {
+        err.textContent = 'Digite a senha de acesso.';
+        err.style.display = 'block';
+      }
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.token) {
+        if (err) {
+          err.textContent = data.error || 'Senha incorreta. Tente novamente.';
+          err.style.display = 'block';
+        }
+        return;
+      }
+
+      sessionStorage.setItem('nimari_admin_token', data.token);
+      if (inp) inp.value = '';
+      window.closeAdminLogin();
+      alert('Acesso administrativo liberado!');
+    } catch (e) {
+      if (err) {
+        err.textContent = 'API indisponível: verifique se o Node está rodando no Railway.';
+        err.style.display = 'block';
+      }
+    }
+  };
+
+  window.addEventListener('DOMContentLoaded', () => {
+    if (!document.getElementById('nimariQuickAdminBtn')) {
+      const btn = document.createElement('button');
+      btn.id = 'nimariQuickAdminBtn';
+      btn.type = 'button';
+      btn.textContent = 'Admin';
+      btn.style.cssText =
+        'position:fixed;bottom:14px;left:14px;z-index:9999;background:#1a1a1a;color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;opacity:0.8;';
+      btn.addEventListener('click', window.openAdminLogin);
+      document.body.appendChild(btn);
+    }
+  });
+})();
