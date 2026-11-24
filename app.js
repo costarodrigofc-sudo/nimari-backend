@@ -219,3 +219,120 @@ async function removerMarca(index) {
   renderAdminBrandsList();
   showToast('Marca removida.');
 }
+// ==========================================
+// AUTENTICAÇÃO ADMIN E INTEGRAÇÃO COM API
+// ==========================================
+const NIMARI_API_BASE =
+  typeof window.NIMARI_API_URL === 'string' && window.NIMARI_API_URL
+    ? window.NIMARI_API_URL.replace(/\/$/, '')
+    : '/api';
+
+let adminSessionToken = sessionStorage.getItem('nimari_admin_token') || '';
+
+function closeAdminLogin() {
+  const overlay = document.getElementById('adminLoginOverlay');
+  const errEl = document.getElementById('adminLoginErr');
+  if (errEl) errEl.style.display = 'none';
+  if (overlay) {
+    overlay.style.display = 'none';
+    overlay.classList.remove('active', 'open', 'show');
+  }
+}
+
+async function adminLogin() {
+  const input = document.getElementById('adminPwdInput');
+  const errEl = document.getElementById('adminLoginErr');
+  const password = input ? String(input.value || '').trim() : '';
+
+  if (errEl) errEl.style.display = 'none';
+
+  if (!password) {
+    if (errEl) {
+      errEl.textContent = 'Digite a senha de acesso.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${NIMARI_API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+
+    const data = await resp.json().catch(() => ({}));
+
+    if (!resp.ok || !data.token) {
+      if (errEl) {
+        errEl.textContent = data.error || 'Senha incorreta. Tente novamente.';
+        errEl.style.display = 'block';
+      }
+      return;
+    }
+
+    adminSessionToken = data.token;
+    sessionStorage.setItem('nimari_admin_token', adminSessionToken);
+    if (input) input.value = '';
+    closeAdminLogin();
+
+    const adminPanel =
+      document.getElementById('adminPanel') ||
+      document.getElementById('adminDashboard') ||
+      document.querySelector('[data-admin-panel]');
+    if (adminPanel) {
+      adminPanel.style.display = 'block';
+      adminPanel.classList.add('active', 'open', 'show');
+    }
+
+    alert('Login administrativo realizado com sucesso.');
+  } catch (err) {
+    console.error('Erro no login admin:', err);
+    if (errEl) {
+      errEl.textContent = 'Erro de conexão com o servidor.';
+      errEl.style.display = 'block';
+    }
+  }
+}
+
+async function nimariUploadImagem(file, pasta = 'produtos') {
+  if (!adminSessionToken) {
+    throw new Error('Faça o login administrativo antes de enviar imagens.');
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('pasta', pasta);
+
+  const resp = await fetch(`${NIMARI_API_BASE}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminSessionToken}` },
+    body: formData,
+  });
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || 'Falha no upload de imagem.');
+  return data.url;
+}
+
+async function nimariCriarProduto(payload) {
+  if (!adminSessionToken) {
+    throw new Error('Faça o login administrativo antes de cadastrar produtos.');
+  }
+  const resp = await fetch(`${NIMARI_API_BASE}/produtos`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${adminSessionToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || 'Falha ao salvar produto.');
+  return data;
+}
+
+window.adminLogin = adminLogin;
+window.closeAdminLogin = closeAdminLogin;
+window.nimariUploadImagem = nimariUploadImagem;
+window.nimariCriarProduto = nimariCriarProduto;
