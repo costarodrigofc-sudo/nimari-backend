@@ -228,6 +228,10 @@ app.post('/api/upload', autenticarAdmin, upload.single('file'), async (req, res)
 // ROTA TEMPORÁRIA DE MIGRAÇÃO SUPABASE -> R2
 // Remover este endpoint após concluir a migração.
 // ==========================================
+// ==========================================
+// ROTA TEMPORÁRIA DE MIGRAÇÃO SUPABASE -> R2
+// Remover este endpoint após concluir a migração.
+// ==========================================
 app.post('/api/admin/migrar-r2', async (req, res) => {
   try {
     const secret = req.headers['x-migrate-secret'] || req.body?.secret;
@@ -239,6 +243,7 @@ app.post('/api/admin/migrar-r2', async (req, res) => {
     const { client, bucket, publicUrl } = criarClienteR2();
     const cache = new Map();
     const migrados = [];
+    const erros = [];
 
     const ehSupabase = (url) => typeof url === 'string' && url.includes('supabase.co');
 
@@ -249,10 +254,18 @@ app.post('/api/admin/migrar-r2', async (req, res) => {
       const key = `${pasta}/${slug}-${indice}-${Date.now()}.webp`;
       const novaUrl = `${publicUrl}/${key}`;
 
-      if (!dryRun) {
-        const resposta = await fetch(urlAntiga);
+      if (dryRun) {
+        cache.set(urlAntiga, novaUrl);
+        migrados.push({ de: urlAntiga, para: novaUrl, dryRun: true });
+        return novaUrl;
+      }
+
+      try {
+        const resposta = await fetch(urlAntiga, {
+          headers: { 'User-Agent': 'Mozilla/5.0 NIMARI-Migrator/1.0' },
+        });
         if (!resposta.ok) {
-          throw new Error(`Falha ao baixar ${urlAntiga} (HTTP ${resposta.status})`);
+          throw new Error(`HTTP ${resposta.status} (${resposta.statusText})`);
         }
         const originalBuffer = Buffer.from(await resposta.arrayBuffer());
         const webpBuffer = await bufferParaWebp(originalBuffer);
@@ -266,11 +279,16 @@ app.post('/api/admin/migrar-r2', async (req, res) => {
             CacheControl: 'public, max-age=31536000, immutable',
           })
         );
-      }
 
-      cache.set(urlAntiga, novaUrl);
-      migrados.push({ de: urlAntiga, para: novaUrl, dryRun });
-      return novaUrl;
+        cache.set(urlAntiga, novaUrl);
+        migrados.push({ de: urlAntiga, para: novaUrl, dryRun: false });
+        return novaUrl;
+      } catch (err) {
+        const detalhe = err?.cause?.code || err?.cause?.message || err?.message || 'Erro desconhecido';
+        console.error(`Falha ao migrar ${urlAntiga}:`, detalhe);
+        erros.push({ url: urlAntiga, erro: detalhe });
+        return urlAntiga;
+      }
     }
 
     // 1. Produtos
@@ -281,19 +299,24 @@ app.post('/api/admin/migrar-r2', async (req, res) => {
       let novaImg = prod.img || '';
 
       if (ehSupabase(novaImg)) {
-        novaImg = await migrarUrl(novaImg, 'produtos', slug, 1);
-        alterou = true;
+        const resImg = await migrarUrl(novaImg, 'produtos', slug, 1);
+        if (resImg !== novaImg) {
+          novaImg = resImg;
+          alterou = true;
+        }
       }
 
       const galeriaAtual = Array.isArray(prod.imagens) ? prod.imagens : [];
       const novaGaleria = [];
 
       for (let i = 0; i < galeriaAtual.length; i++) {
-        if (ehSupabase(galeriaAtual[i])) {
-          novaGaleria.push(await migrarUrl(galeriaAtual[i], 'produtos', slug, i + 2));
-          alterou = true;
+        const atual = galeriaAtual[i];
+        if (ehSupabase(atual)) {
+          const resGal = await migrarUrl(atual, 'produtos', slug, i + 2);
+          novaGaleria.push(resGal);
+          if (resGal !== atual) alterou = true;
         } else {
-          novaGaleria.push(galeriaAtual[i]);
+          novaGaleria.push(atual);
         }
       }
 
@@ -310,7 +333,7 @@ app.post('/api/admin/migrar-r2', async (req, res) => {
     for (const marca of marcas) {
       if (ehSupabase(marca.logo_url)) {
         const novaLogo = await migrarUrl(marca.logo_url, 'marcas', criarSlug(marca.nome), 1);
-        if (!dryRun) {
+        if (!dryRun && novaLogo !== marca.logo_url) {
           await pool.query('UPDATE marcas SET logo_url = $1 WHERE id = $2', [novaLogo, marca.id]);
         }
       }
@@ -321,7 +344,7 @@ app.post('/api/admin/migrar-r2', async (req, res) => {
     for (const dep of depoimentos) {
       if (ehSupabase(dep.avatar)) {
         const novoAvatar = await migrarUrl(dep.avatar, 'depoimentos', criarSlug(dep.nome), 1);
-        if (!dryRun) {
+        if (!dryRun && novoAvatar !== dep.avatar) {
           await pool.query('UPDATE depoimentos SET avatar = $1 WHERE id = $2', [novoAvatar, dep.id]);
         }
       }
@@ -332,7 +355,7 @@ app.post('/api/admin/migrar-r2', async (req, res) => {
     for (const cfg of configs) {
       if (ehSupabase(cfg.valor)) {
         const novoValor = await migrarUrl(cfg.valor, 'config', criarSlug(cfg.chave), 1);
-        if (!dryRun) {
+        if (!dryRun && novoValor !== cfg.valor) {
           await pool.query('UPDATE configuracoes SET valor = $1, updated_at = NOW() WHERE chave = $2', [
             novoValor,
             cfg.chave,
@@ -345,11 +368,16 @@ app.post('/api/admin/migrar-r2', async (req, res) => {
       ok: true,
       dryRun,
       totalConvertidas: migrados.length,
+      totalErros: erros.length,
       migrados,
+      erros,
     });
   } catch (err) {
     console.error('Erro na migração R2:', err);
-    return res.status(500).json({ error: err.message || 'Erro interno durante a migração para o R2.' });
+    return res.status(500).json({
+      error: err.message || 'Erro interno durante a migração para o R2.',
+      detalhe: err?.cause?.code || err?.cause?.message || null,
+    });
   }
 });
 
