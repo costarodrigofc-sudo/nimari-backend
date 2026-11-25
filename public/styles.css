@@ -677,3 +677,171 @@ select.admin-inp option { background: #2a2a2a; color: var(--white); }
   .modal-img { height: 100%; min-height: unset; object-fit: contain; }
   .modal-content { flex: 1; overflow-y: auto; padding: 1.2rem; }
 }
+/* ══════════════════════════════════════════════
+   NIMARI — Patch de cards, selos e carrinho
+   Colar no FINAL do public/styles.css
+   ══════════════════════════════════════════════ */
+
+/* ── CARD DE PRODUTO ── */
+.product-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(180, 140, 130, 0.08);
+}
+
+.product-img-wrap {
+  aspect-ratio: 1 / 1;
+  background: var(--white);
+}
+.product-img-wrap .product-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 1.1rem 1.2rem 1.3rem;
+}
+
+.product-cat {
+  font-family: var(--ff-sans);
+  font-size: 0.63rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rose-deep);
+  margin-bottom: 0.4rem;
+}
+
+.product-body .product-name {
+  font-family: var(--ff-serif);
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  margin-bottom: 0.4rem;
+}
+
+.product-body .product-desc {
+  font-family: var(--ff-sans);
+  font-size: 0.75rem;
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--ink-lt);
+  margin-bottom: 0.8rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-price-row {
+  margin-top: auto;
+  padding-top: 0.4rem;
+}
+
+/* ── BOTÕES DO CARD ── */
+.product-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.btn-add-cart,
+.btn-details {
+  font-family: var(--ff-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.7rem 0.4rem;
+  cursor: pointer;
+  transition: background 0.25s, color 0.25s, border-color 0.25s;
+}
+
+.btn-add-cart {
+  background: var(--ink);
+  color: var(--white);
+  border: 1.5px solid var(--ink);
+}
+.btn-add-cart:hover {
+  background: var(--rose-deep);
+  border-color: var(--rose-deep);
+}
+
+.btn-details {
+  background: transparent;
+  color: var(--ink);
+  border: 1.5px solid var(--rose-dark);
+}
+.btn-details:hover {
+  background: var(--rose);
+  border-color: var(--rose-deep);
+}
+
+/* ── SELOS (Novo, Oferta, Mais Vendido, Esgotado) ── */
+.product-badge.badge-novo     { background: var(--rose-deep); }
+.product-badge.badge-oferta   { background: #B85C5C; }
+.product-badge.badge-vendido  { background: var(--gold); }
+.product-badge.badge-esgotado { background: #555; }
+
+/* ── CARRINHO ── */
+.cart-item {
+  grid-template-columns: 64px 1fr;
+}
+.cart-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.cart-item-qty {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.cart-item-qty button {
+  width: 24px;
+  height: 24px;
+  background: var(--rose);
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ink);
+  transition: background 0.2s;
+}
+.cart-item-qty button:hover {
+  background: var(--rose-dark);
+}
+.cart-item-qty span {
+  min-width: 22px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Campo de endereço no carrinho (mesmo estilo do nome) */
+.cart-name-input:focus {
+  outline: none;
+  border-color: var(--rose-deep);
+}
+
+/* ── MOBILE ── */
+@media (max-width: 500px) {
+  .product-body { padding: 0.6rem 0.5rem 0.8rem; }
+  .product-body .product-name {
+    font-size: 0.74rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .product-cat { font-size: 0.55rem; }
+  .product-body .product-desc { display: none; }
+  .product-actions { grid-template-columns: 1fr; gap: 0.35rem; }
+  .btn-add-cart,
+  .btn-details { font-size: 0.62rem; padding: 0.6rem 0.3rem; }
+}
