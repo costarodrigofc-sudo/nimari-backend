@@ -10,11 +10,11 @@
   }
 
   function sanitizeUrl(url) {
-    const u = String(url || '').trim();
-    if (!u) return '';
-    if (/supabase\.co|midia\.nimari\.com\.br/i.test(u)) return '';
-    return u;
-  }
+  const u = String(url || '').trim();
+  if (!u) return '';
+  if (/supabase\.co/i.test(u)) return '';
+  return u;
+}
 
   function formatBRL(val) {
     const num = Number(String(val ?? 0).replace(',', '.')) || 0;
