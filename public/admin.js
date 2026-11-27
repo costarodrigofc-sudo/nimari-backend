@@ -9,7 +9,7 @@
       ['infantil-cosm', 'Infantil'], ['outros-cosm', 'Outros'],
     ],
     confeccao: [
-      ['intima-fem', 'Moda Íntima Feminina'], ['intima-inf', 'Moda Íntima Infantil'],
+      ['intima-fem', 'Moda Íntima Feminina'], ['moda-fem', 'Moda Feminina'], ['intima-inf', 'Moda Íntima Infantil'],
       ['sutia', 'Sutiã'], ['calcinha', 'Calcinha'], ['outros-conf', 'Outros'],
     ],
     kit: [['kit-presente', 'Kit Presente']],
