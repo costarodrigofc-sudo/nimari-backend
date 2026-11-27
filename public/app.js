@@ -20,6 +20,7 @@
     'infantil-cosm': 'Cosméticos › Infantil',
     'outros-cosm': 'Cosméticos › Outros',
     'intima-fem': 'Confecção › Moda Íntima Feminina',
+    'moda-fem': 'Confecção › Moda Feminina',
     'intima-inf': 'Confecção › Moda Íntima Infantil',
     'sutia': 'Confecção › Sutiã',
     'calcinha': 'Confecção › Calcinha',
@@ -38,6 +39,7 @@
     ],
     confeccao: [
       { value: 'intima-fem', label: 'Moda Íntima Feminina' },
+      { value: 'moda-fem', label: 'Moda Feminina' },
       { value: 'intima-inf', label: 'Moda Íntima Infantil' },
       { value: 'sutia', label: 'Sutiã' },
       { value: 'calcinha', label: 'Calcinha' },
