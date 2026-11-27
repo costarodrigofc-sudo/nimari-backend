@@ -3,127 +3,171 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
   <title>Painel Admin · NIMARI</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="favicon_io/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    body { background: #141213; color: #f6f1ef; font-family: 'Jost', sans-serif; margin: 0; }
-    .adm-wrap { max-width: 1040px; margin: 0 auto; padding: 28px 18px 64px; }
-    .adm-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,.12); padding-bottom: 16px; }
-    .adm-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-    .adm-tab { padding: 9px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,.18); background: #1f1b1d; color: #fff; cursor: pointer; }
-    .adm-tab.active { background: #8b4a62; border-color: #8b4a62; }
-    .adm-card { background: #1e1a1c; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
-    .adm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-    .adm-inp, .adm-sel, .adm-ta { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.18); background: #120f10; color: #fff; }
-    .adm-btn { padding: 10px 16px; border-radius: 8px; border: none; background: #8b4a62; color: #fff; cursor: pointer; font-weight: 500; }
-    .adm-btn.sec { background: #2d2729; }
-    .adm-btn.del { background: #8f2d2d; }
-    .adm-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid rgba(255,255,255,.08); }
-    .adm-msg { margin-top: 10px; font-size: .9rem; color: #f3c6d4; min-height: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .85rem; }
-    th, td { border: 1px solid rgba(255,255,255,.12); padding: 8px; text-align: left; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg:#141213; --card:#1e1a1c; --line:rgba(255,255,255,.12); --txt:#f6f1ef; --mut:rgba(246,241,239,.6); --acc:#8b4a62; --acc2:#a85c78; --ok:#3c8c60; --bad:#8f2d2d; }
+    body { background: var(--bg); color: var(--txt); font-family: 'Jost', sans-serif; line-height: 1.5; }
+    .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 16px 80px; }
+    .top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+    .top h1 { font-size: 1.4rem; font-weight: 600; }
+    .top small { color: var(--mut); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .tab { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--txt); cursor: pointer; font-size: .88rem; }
+    .tab.active { background: var(--acc); border-color: var(--acc); }
+    label { display: block; font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); margin-bottom: 5px; }
+    input, select, textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: #120f10; color: var(--txt); font-family: inherit; font-size: .92rem; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--acc2); }
+    input[type=checkbox] { width: auto; }
+    input[type=file] { padding: 8px; }
+    textarea { resize: vertical; min-height: 80px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+    .full { grid-column: 1 / -1; }
+    .btn { padding: 10px 18px; border-radius: 8px; border: none; background: var(--acc); color: #fff; cursor: pointer; font-weight: 500; font-family: inherit; font-size: .88rem; text-decoration: none; display: inline-block; }
+    .btn:hover { background: var(--acc2); }
+    .btn.sec { background: #2d2729; }
+    .btn.sec:hover { background: #3a3336; }
+    .btn.del { background: var(--bad); }
+    .btn.sm { padding: 6px 12px; font-size: .8rem; }
+    .row { display: flex; align-items: center; gap: 12px; padding: 12px 6px; border-bottom: 1px solid var(--line); }
+    .row:last-child { border-bottom: none; }
+    .row img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; background: #fff; flex-shrink: 0; }
+    .row .info { flex: 1; min-width: 0; }
+    .row .info strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .row .info span { font-size: .8rem; color: var(--mut); }
+    .row.inativo { opacity: .5; }
+    .pill { display: inline-block; font-size: .65rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; background: #3a3336; margin-left: 6px; vertical-align: middle; }
+    .pill.on { background: var(--ok); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .toolbar input { flex: 1; min-width: 200px; }
+    .toolbar select { width: auto; }
+    .imgs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .img-item { position: relative; width: 96px; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+    .img-item.main { border-color: var(--acc2); }
+    .img-item img { width: 100%; height: 96px; object-fit: cover; display: block; }
+    .img-item .bar { display: flex; justify-content: space-between; background: #000; }
+    .img-item .bar button { flex: 1; background: none; border: none; color: #fff; padding: 4px 0; cursor: pointer; font-size: .85rem; }
+    .img-item .bar button:hover { background: var(--acc); }
+    .tag-main { position: absolute; top: 4px; left: 4px; background: var(--acc2); font-size: .58rem; font-weight: 600; padding: 1px 6px; border-radius: 999px; text-transform: uppercase; }
+    .msg { margin-top: 12px; font-size: .9rem; min-height: 20px; color: #f3c6d4; white-space: pre-line; }
+    .msg.ok { color: #9fe0bb; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .84rem; }
+    th, td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; }
+    .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(90px); background: #000; border-left: 3px solid var(--acc2); padding: 11px 22px; border-radius: 999px; font-size: .86rem; opacity: 0; transition: transform .35s, opacity .3s; z-index: 50; pointer-events: none; }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.err { border-left-color: #e05a5a; }
+    .hint { font-size: .78rem; color: var(--mut); margin-top: 4px; }
+    .hidden { display: none !important; }
+    @media (max-width: 560px) { .row { flex-wrap: wrap; } .row .acts { width: 100%; display: flex; gap: 8px; } }
   </style>
 </head>
 <body>
-  <div class="adm-wrap">
-    <div class="adm-top">
-      <div>
-        <h1 style="margin:0;font-size:1.5rem;">Painel Administrativo · NIMARI</h1>
-        <small style="opacity:.75;">Gestão de produtos (individual e em lote)</small>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center;">
-        <a href="index.html" class="adm-btn sec" style="text-decoration:none;">Ver Vitrine</a>
-        <button type="button" class="adm-btn sec" onclick="sairAdmin()">Sair</button>
-      </div>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Painel Administrativo · NIMARI</h1>
+      <small>Gestão de produtos</small>
     </div>
-
-    <!-- LOGIN -->
-    <div id="loginBox" class="adm-card" style="max-width:420px;margin:40px auto;">
-      <h2 style="margin-top:0;">Acesso Restrito</h2>
-      <p style="opacity:.8;font-size:.9rem;">Digite a chave administrativa para gerenciar o catálogo.</p>
-      <input id="pwdInput" type="password" class="adm-inp" placeholder="Senha admin" onkeydown="if(event.key==='Enter')fazerLogin()">
-      <button type="button" class="adm-btn" style="margin-top:12px;width:100%;" onclick="fazerLogin()">Entrar</button>
-      <div id="loginErr" class="adm-msg"></div>
-    </div>
-
-    <!-- ÁREA LOGADA -->
-    <div id="panelBox" style="display:none;">
-      <div class="adm-tabs">
-        <button type="button" class="adm-tab active" data-tab="lista" onclick="trocarAba('lista')">Produtos Cadastrados</button>
-        <button type="button" class="adm-tab" data-tab="novo" onclick="trocarAba('novo')">Novo Produto</button>
-        <button type="button" class="adm-tab" data-tab="lote" onclick="trocarAba('lote')">Importar em Lote (.xlsx)</button>
-      </div>
-
-      <!-- ABA 1: LISTA E EDIÇÃO -->
-      <div id="aba-lista" class="adm-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
-          <input id="buscaAdmin" class="adm-inp" style="max-width:320px;" placeholder="Filtrar por nome ou categoria..." oninput="renderListaProdutos()">
-          <button type="button" class="adm-btn sec" onclick="carregarProdutos()">Atualizar Lista</button>
-        </div>
-        <div id="listaProdutos"></div>
-
-        <div id="formEdicao" style="display:none;margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,.15);">
-          <h3 style="margin-top:0;">Editando Produto #<span id="editIdLabel"></span></h3>
-          <div class="adm-grid">
-            <input id="editNome" class="adm-inp" placeholder="Nome do produto">
-            <input id="editPreco" class="adm-inp" placeholder="Preço (ex.: 59,90)">
-            <select id="editCat" class="adm-sel">
-              <option value="cosmeticos">Cosméticos</option>
-              <option value="confeccao">Confecção</option>
-              <option value="kit">Kit</option>
-            </select>
-            <input id="editImg" class="adm-inp" placeholder="URL da imagem">
-          </div>
-          <div style="margin-top:10px;">
-            <textarea id="editDesc" class="adm-ta" rows="2" placeholder="Descrição"></textarea>
-          </div>
-          <div style="display:flex;gap:10px;margin-top:12px;">
-            <button type="button" class="adm-btn" onclick="salvarEdicao()">Salvar Alterações</button>
-            <button type="button" class="adm-btn del" onclick="excluirProdutoAtual()">Excluir</button>
-            <button type="button" class="adm-btn sec" onclick="fecharEdicao()">Cancelar</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ABA 2: CADASTRO INDIVIDUAL -->
-      <div id="aba-novo" class="adm-card" style="display:none;">
-        <h3 style="margin-top:0;">Cadastrar Produto Individual</h3>
-        <div class="adm-grid">
-          <input id="novoNome" class="adm-inp" placeholder="Nome do produto *">
-          <input id="novoPreco" class="adm-inp" placeholder="Preço (ex.: 79,90)">
-          <select id="novoCat" class="adm-sel">
-            <option value="cosmeticos">Cosméticos</option>
-            <option value="confeccao">Confecção</option>
-            <option value="kit">Kit</option>
-          </select>
-          <input id="novoFile" type="file" accept="image/*" class="adm-inp">
-        </div>
-        <div style="margin-top:10px;">
-          <textarea id="novoDesc" class="adm-ta" rows="2" placeholder="Descrição do produto"></textarea>
-        </div>
-        <button type="button" class="adm-btn" style="margin-top:12px;" onclick="cadastrarIndividual()">Salvar Produto</button>
-        <div id="novoStatus" class="adm-msg"></div>
-      </div>
-
-      <!-- ABA 3: IMPORTAÇÃO EM LOTE -->
-      <div id="aba-lote" class="adm-card" style="display:none;">
-        <h3 style="margin-top:0;">Importar Produtos em Lote (.xlsx / .csv)</h3>
-        <p style="opacity:.8;font-size:.9rem;">Colunas esperadas: <code>nome</code>, <code>preco</code>, <code>categoria</code>, <code>descricao</code>, <code>imagem</code>.</p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-          <input id="loteFile" type="file" accept=".xlsx,.xls,.csv" onchange="lerArquivoLote(this.files[0])">
-          <button type="button" class="adm-btn sec" onclick="baixarModeloPlanilha()">Baixar Modelo .xlsx</button>
-        </div>
-        <div id="lotePreview" style="margin-top:14px;"></div>
-        <button type="button" id="btnImportarLote" class="adm-btn" style="display:none;margin-top:12px;" onclick="enviarLote()">Importar Todos para o Banco</button>
-        <div id="loteStatus" class="adm-msg"></div>
-      </div>
+    <div style="display:flex;gap:10px;">
+      <a href="/" class="btn sec">Ver vitrine</a>
+      <button type="button" class="btn sec hidden" id="btnSair" onclick="sairAdmin()">Sair</button>
     </div>
   </div>
 
-  <script>
-    window.NIMARI_API_URL = '/api';
-  </script>
-  <script src="admin.js"></script>
+  <!-- LOGIN -->
+  <div id="loginBox" class="card" style="max-width:420px;margin:40px auto;">
+    <h2 style="margin-bottom:6px;">Acesso restrito</h2>
+    <p style="color:var(--mut);font-size:.9rem;margin-bottom:14px;">Digite a senha administrativa.</p>
+    <input id="pwdInput" type="password" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
+    <button type="button" class="btn" style="margin-top:12px;width:100%;" onclick="fazerLogin()">Entrar</button>
+    <div id="loginErr" class="msg"></div>
+  </div>
+
+  <!-- PAINEL -->
+  <div id="panelBox" class="hidden">
+    <div class="tabs">
+      <button type="button" class="tab active" data-tab="lista" onclick="trocarAba('lista')">Produtos</button>
+      <button type="button" class="tab" data-tab="form" id="tabForm" onclick="novoProduto()">Novo produto</button>
+      <button type="button" class="tab" data-tab="lote" onclick="trocarAba('lote')">Importar planilha</button>
+    </div>
+
+    <!-- LISTA -->
+    <div id="aba-lista" class="card">
+      <div class="toolbar">
+        <input id="busca" placeholder="Buscar por nome, código ou categoria..." oninput="renderLista()">
+        <select id="filtroStatus" onchange="renderLista()">
+          <option value="todos">Todos</option>
+          <option value="ativos">Ativos</option>
+          <option value="inativos">Inativos</option>
+        </select>
+        <button type="button" class="btn sec" onclick="carregarProdutos()">Atualizar</button>
+      </div>
+      <div id="contagem" class="hint" style="margin-bottom:8px;"></div>
+      <div id="lista"></div>
+    </div>
+
+    <!-- FORMULÁRIO (NOVO / EDITAR) -->
+    <div id="aba-form" class="card hidden">
+      <h3 id="formTitulo" style="margin-bottom:16px;">Novo produto</h3>
+      <div class="grid">
+        <div class="full"><label for="f-nome">Nome *</label><input id="f-nome" maxlength="200"></div>
+        <div><label for="f-preco">Preço (R$) *</label><input id="f-preco" placeholder="59,90" inputmode="decimal"></div>
+        <div><label for="f-antigo">Preço antigo (opcional)</label><input id="f-antigo" placeholder="79,90" inputmode="decimal"><div class="hint">Se maior que o preço, aparece riscado.</div></div>
+        <div><label for="f-cat">Categoria</label>
+          <select id="f-cat" onchange="syncSubs()">
+            <option value="cosmeticos">Cosméticos</option>
+            <option value="confeccao">Confecção</option>
+            <option value="kit">Kit</option>
+          </select></div>
+        <div><label for="f-sub">Subcategoria</label><select id="f-sub"></select></div>
+        <div><label for="f-badge">Selo</label><select id="f-badge"></select></div>
+        <div><label for="f-marca">Marca (opcional)</label><input id="f-marca" maxlength="100"></div>
+        <div class="full"><label for="f-desc">Descrição</label><textarea id="f-desc" maxlength="2000"></textarea></div>
+        <div><label for="f-wpp">WhatsApp específico (opcional)</label><input id="f-wpp" placeholder="5598..." inputmode="numeric"></div>
+        <div><label for="f-mp">Link Mercado Pago (opcional)</label><input id="f-mp" placeholder="https://..."></div>
+        <div class="full">
+          <label>Imagens (a primeira é a principal)</label>
+          <input id="f-files" type="file" accept="image/*" multiple onchange="enviarImagens(this)">
+          <div class="hint">Você pode escolher várias fotos de uma vez. Elas são convertidas para WebP automaticamente.</div>
+          <div class="imgs" id="imgs"></div>
+        </div>
+        <div class="full"><label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:.9rem;color:var(--txt);">
+          <input type="checkbox" id="f-ativo" checked> Produto ativo (visível na vitrine)</label></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;">
+        <button type="button" class="btn" id="btnSalvar" onclick="salvarProduto()">Salvar produto</button>
+        <button type="button" class="btn del hidden" id="btnExcluir" onclick="excluirProduto()">Excluir</button>
+        <button type="button" class="btn sec" onclick="trocarAba('lista')">Cancelar</button>
+      </div>
+      <div id="formMsg" class="msg"></div>
+    </div>
+
+    <!-- LOTE -->
+    <div id="aba-lote" class="card hidden">
+      <h3 style="margin-bottom:8px;">Importar produtos por planilha (.xlsx / .csv)</h3>
+      <p style="color:var(--mut);font-size:.88rem;margin-bottom:12px;">
+        Colunas: <code>nome</code> (obrigatória), <code>preco</code>, <code>categoria</code>, <code>subcategoria</code>, <code>descricao</code>, <code>imagem</code>, <code>preco_antigo</code>, <code>selo</code>, <code>codigo</code>.<br>
+        Reimportar a mesma planilha <strong>atualiza</strong> os produtos existentes (mesmo código ou mesmo nome+categoria), sem duplicar.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+        <input id="loteFile" type="file" accept=".xlsx,.xls,.csv" style="max-width:340px;" onchange="lerArquivoLote(this.files[0])">
+        <button type="button" class="btn sec" onclick="baixarModelo()">Baixar modelo</button>
+      </div>
+      <div id="lotePreview" style="margin-top:14px;overflow-x:auto;"></div>
+      <button type="button" id="btnLote" class="btn hidden" style="margin-top:12px;" onclick="enviarLote()">Importar para o banco</button>
+      <div id="loteMsg" class="msg"></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>window.NIMARI_API_URL = '/api';</script>
+<script src="admin.js?v=2"></script>
 </body>
 </html>
