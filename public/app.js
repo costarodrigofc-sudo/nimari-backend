@@ -1381,16 +1381,16 @@
     box.style.display = 'flex';
   };
 
-  window.addEventListener('DOMContentLoaded', () => {
-    if (!document.getElementById('nimariNovoProdutoBtn')) {
-      const btn = document.createElement('button');
-      btn.id = 'nimariNovoProdutoBtn';
-      btn.type = 'button';
-      btn.textContent = '+ Produto';
-      btn.style.cssText =
-        'position:fixed;bottom:14px;left:76px;z-index:9999;background:#8b4a62;color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;opacity:0.9;';
-      btn.addEventListener('click', window.abrirPainelCadastroNimari);
-      document.body.appendChild(btn);
-    }
-  });
+  // window.addEventListener('DOMContentLoaded', () => {
+  //   if (!document.getElementById('nimariNovoProdutoBtn')) {
+  //     const btn = document.createElement('button');
+  //     btn.id = 'nimariNovoProdutoBtn';
+  //     btn.type = 'button';
+  //     btn.textContent = '+ Produto';
+  //     btn.style.cssText =
+  //       'position:fixed;bottom:14px;left:76px;z-index:9999;background:#8b4a62;color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;opacity:0.9;';
+  //     btn.addEventListener('click', window.abrirPainelCadastroNimari);
+  //     document.body.appendChild(btn);
+  //   }
+  // });
 })();
