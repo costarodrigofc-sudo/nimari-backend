@@ -249,7 +249,7 @@ class ValidationError extends Error {
 
 const SUBCATEGORIAS = {
   cosmeticos: ['pele', 'cabelo', 'perf-fem', 'perf-masc', 'infantil-cosm', 'outros-cosm'],
-  confeccao: ['intima-fem', 'intima-inf', 'sutia', 'calcinha', 'outros-conf'],
+  confeccao: ['intima-fem', 'moda-fem', 'intima-inf', 'sutia', 'calcinha', 'outros-conf'],
   kit: ['kit-presente'],
 };
 const BADGES = new Set(['none', 'novo', 'oferta', 'vendido', 'esgotado']);
